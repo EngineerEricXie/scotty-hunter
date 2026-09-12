@@ -3,12 +3,15 @@
 import { useEffect, useState } from "react";
 import { markSplashSeen, loadScotty } from "@/lib/scotty/state";
 import { ScottySprite } from "@/components/pet/ScottySprite";
+import { prefetchCampusEvents } from "@/lib/events-client";
+import { demoClockLabel } from "@/lib/demo-clock";
 
 export function PressStartGate() {
   const [ready, setReady] = useState(false);
   const [seen, setSeen] = useState(true);
 
   useEffect(() => {
+    void prefetchCampusEvents().catch(() => undefined);
     const id = window.setTimeout(() => {
       setSeen(loadScotty().seenSplash);
       setReady(true);
@@ -28,12 +31,15 @@ export function PressStartGate() {
       <div className="pixel-panel max-w-sm bg-card p-5 text-center">
         <p className="hud text-[9px] text-tartan">HACKCMU 2026</p>
         <h1 className="hud mt-3 text-[16px] leading-7">SCOTTYBITES</h1>
-        <div className="mx-auto mt-4 w-40">
+        <p className="mt-3 text-sm font-bold leading-6">
+          A personalized free-meal plan for Carnegie Mellon. Tell the agent who you are — ranking
+          stays deterministic, not an LLM.
+        </p>
+        <div className="mx-auto mt-4 w-24">
           <ScottySprite mood="happy" action="idle" />
         </div>
-        <p className="mt-4 text-sm font-bold leading-6">
-          Hunt free food on a pixel Carnegie Mellon map. Snap dishes, catch them in the Food Dex,
-          and raise Scotty.
+        <p className="mt-3 text-xs font-bold text-muted">
+          Then see it on the map, RSVP the leftovers, and keep Scotty fed.
         </p>
         <button
           type="button"
@@ -48,16 +54,9 @@ export function PressStartGate() {
 }
 
 export function StatusBar({ right = "HACKCMU" }: { right?: string }) {
-  const [clock, setClock] = useState("12:00");
+  const [clock, setClock] = useState(demoClockLabel());
   useEffect(() => {
-    const tick = () =>
-      setClock(
-        new Intl.DateTimeFormat("en-US", {
-          timeZone: "America/New_York",
-          hour: "numeric",
-          minute: "2-digit",
-        }).format(new Date()),
-      );
+    const tick = () => setClock(demoClockLabel());
     tick();
     const id = window.setInterval(tick, 15_000);
     return () => window.clearInterval(id);

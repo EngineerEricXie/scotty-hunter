@@ -34,6 +34,9 @@ export const SourceTypeSchema = z.enum([
 export const ExtractedFoodSchema = z.object({
   status: FoodStatusSchema,
   types: z.array(FoodTypeSchema),
+  items: z.array(z.string()).default([]),
+  cuisineTags: z.array(z.string()).default([]),
+  dietaryTags: z.array(z.string()).default([]),
   confidence: z.number().min(0).max(1),
   evidence: z.string().nullable(),
 });
@@ -58,6 +61,7 @@ export const EventExtractionSchema = z.object({
   room: z.string().nullable(),
   food: ExtractedFoodSchema,
   registration: ExtractedRegistrationSchema,
+  eventTypes: z.array(z.string()).nullable().optional(),
   sourceExternalId: z.string().nullable().optional(),
   incomplete: z.boolean().optional(),
   incompleteReasons: z.array(z.string()).optional(),

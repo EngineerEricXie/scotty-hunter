@@ -62,7 +62,8 @@ Copy `.env.example`. All keys are optional. Defaults already run the local demo.
 | `NEXT_PUBLIC_DEMO_MODE` | Force fixture repository (default `true`) |
 | `NEXT_PUBLIC_DEMO_DATE` | Calendar day labeled “Today” (default `2026-09-12`) |
 | `NEXT_PUBLIC_MAP_STYLE_URL` | MapLibre style (default OpenFreeMap liberty) |
-| `EXTRACTION_PROVIDER=llm` + `OPENAI_API_KEY` / Anthropic / Gemini | Real LLM extraction |
+| `EXTRACTION_PROVIDER=llm` + `OPENAI_API_KEY` | Real LLM extraction (OpenAI-compatible) |
+| `OPENAI_BASE_URL` / `OPENAI_MODEL` | Custom host (default OpenAI; IFM: `https://api.ifm.ai/v1` + `IFM/K2-Horizon-375B-A23B`) |
 | `NEXT_PUBLIC_SUPABASE_URL` + anon/service keys | Postgres backend |
 | `GOOGLE_CALENDAR_CLIENT_ID` / secret / redirect | Google Calendar OAuth |
 | `MAPBOX_TOKEN` / `MAPTILER_API_KEY` | Alternate map tiles |
@@ -89,8 +90,9 @@ npm run build
 7. Open **Plan** — lunch + dinner, 12–15 min walk, start at Gates.
 8. **Plan my free food day** — non-overlapping itinerary.
 9. Download **Add day to calendar (.ics)**.
-10. Optional stretch: 3D building extrusion, or a mock photo check-in on **Me**.
-11. Close with: structured data came from messy fixture/source text, not a hand-typed spreadsheet.
+10. Tap **Saturday Lunch** on the map → **UPLOAD PHOTO TO UNLOCK** — the listing only said “Lunch will be provided,” but the table photo reveals vegetarian pizza, salad, and fruit.
+11. Optional stretch: 3D building extrusion, or another mock photo on **Me**.
+12. Close with: structured data came from messy fixture/source text, not a hand-typed spreadsheet.
 
 Walking estimate: Haversine between building coordinates at **80 m/min** (~4.8 km/h). Savings figures are a labeled $12/meal illustration, not factual accounting.
 
@@ -99,7 +101,7 @@ Walking estimate: Haversine between building coordinates at **80 m/min** (~4.8 k
 These are intentionally unfinished because they need a human:
 
 1. Create a Supabase project and paste URL + keys, then apply `supabase/migrations/`.
-2. Create an LLM provider key and set `EXTRACTION_PROVIDER=llm`.
+2. Create an LLM provider key and set `EXTRACTION_PROVIDER=llm` (optional `OPENAI_BASE_URL` / `OPENAI_MODEL` for IFM K2 Horizon).
 3. Create Google OAuth credentials and authorize Calendar.
 4. Deploy to Vercel (log in, set env vars).
 5. Optionally install Playwright Chromium for JS-heavy public pages.

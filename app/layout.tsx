@@ -19,7 +19,7 @@ const pixel = VT323({
 export const metadata: Metadata = {
   title: "ScottyBites",
   description:
-    "Pixel campus free-food hunter for Carnegie Mellon. Raise Scotty, snap dishes, and never miss a table.",
+    "Personalized free-meal plans for Carnegie Mellon. Grounded extraction, deterministic ranking.",
   applicationName: "ScottyBites",
   appleWebApp: {
     capable: true,

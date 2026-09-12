@@ -4,7 +4,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "ScottyBites",
     short_name: "ScottyBites",
-    description: "Pixel campus free-food hunter for Carnegie Mellon.",
+    description: "Personalized free-meal plans for Carnegie Mellon.",
     start_url: "/",
     display: "standalone",
     background_color: "#14261c",

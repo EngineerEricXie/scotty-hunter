@@ -4,27 +4,43 @@ import type {
   Todo,
   UserPreference,
 } from "@/lib/types";
+import { demoNowMs } from "@/lib/demo-clock";
 
 const PREF_KEY = "scottybites:preferences";
 const TODO_KEY = "scottybites:todos";
 const AVAIL_KEY = "scottybites:availability";
 const POINTS_KEY = "scottybites:points";
 const CHECKIN_KEY = "scottybites:checkins";
+const LAST_PLAN_KEY = "scottybites:last-plan-ids";
 
 export const DEFAULT_PREFERENCES: UserPreference = {
   id: "local",
   user_id: "local",
   preferred_days: ["today"],
+  campus_days: ["monday", "wednesday", "friday"],
   wants_breakfast: false,
   wants_lunch: true,
   wants_dinner: true,
   wants_snacks: false,
   max_walking_minutes: 15,
+  ideal_walking_minutes: 10,
   home_building_id: "ghc",
   usual_building_ids: ["ghc"],
+  dietary_constraints: [],
   dietary_preferences: [],
+  favorite_foods: [],
+  disliked_foods: [],
+  preferred_cuisines: [],
   include_likely: true,
   explicit_only: false,
+  allow_possible_food: false,
+  willing_to_rsvp: "only_if_worth_it",
+  preferred_event_types: [],
+  disliked_event_types: [],
+  preferred_campus_zones: [],
+  seen_onboarding: false,
+  last_preference_utterance: "",
+  preference_summary: "",
   created_at: new Date(0).toISOString(),
   updated_at: new Date(0).toISOString(),
 };
@@ -112,10 +128,18 @@ export function recordCheckIn(payload: unknown) {
   writeJson(CHECKIN_KEY, [...existing, payload]);
 }
 
+export function saveLastPlanEventIds(ids: string[]) {
+  writeJson(LAST_PLAN_KEY, ids);
+}
+
+export function loadLastPlanEventIds(): string[] {
+  return readJson<string[]>(LAST_PLAN_KEY, []);
+}
+
 export function seedDemoAvailability() {
   if (typeof window === "undefined") return;
   if (window.localStorage.getItem(AVAIL_KEY)) return;
-  const now = Date.now();
+  const now = demoNowMs();
   writeJson(AVAIL_KEY, [
     {
       event_id: "hackcmu-2026-saturday-lunch",

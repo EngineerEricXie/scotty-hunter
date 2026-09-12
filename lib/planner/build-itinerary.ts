@@ -1,25 +1,25 @@
-import type { Event, Itinerary, ItineraryLeg, MealType, PlannerRequest } from "@/lib/types";
+import type {
+  Event,
+  Itinerary,
+  ItineraryLeg,
+  MealType,
+  PlannerRequest,
+} from "@/lib/types";
 import { calendarDateInZone } from "@/lib/timezone";
 import { APP_TIMEZONE } from "@/lib/config";
 import { getBuilding } from "@/lib/maps/buildings";
-import { inferMeal, mealMatchScore, scoreEvent } from "@/lib/planner/score-event";
-import { canAttend, walkingMinutesForPair } from "@/lib/planner/conflicts";
+import { inferMeal } from "@/lib/planner/score-event";
+import { walkingMinutesForPair } from "@/lib/planner/conflicts";
 import { walkingMinutesBetween } from "@/lib/planner/walking-time";
+import { campusWalkHint } from "@/lib/maps/campus-graph";
 import { formatTime } from "@/lib/timezone";
+import { matchEvent } from "@/lib/personalization/match-event";
+import { requiredActionsForEvents } from "@/lib/planner/required-actions";
 
 const MEAL_ORDER: MealType[] = ["breakfast", "lunch", "dinner", "snacks"];
 
 function eventOnDate(event: Event, date: string): boolean {
   return calendarDateInZone(new Date(event.start_time), APP_TIMEZONE) === date;
-}
-
-function foodAllowed(event: Event, request: PlannerRequest): boolean {
-  if (event.food_status === "NONE") return false;
-  if (request.explicit_only) return event.food_status === "EXPLICIT";
-  if (!request.include_likely) {
-    return event.food_status === "EXPLICIT";
-  }
-  return event.food_status === "EXPLICIT" || event.food_status === "LIKELY";
 }
 
 function tieBreak(a: Event, b: Event): number {
@@ -32,8 +32,7 @@ function tieBreak(a: Event, b: Event): number {
 }
 
 /**
- * Greedy constrained optimizer. For each requested meal, pick the highest
- * scoring feasible candidate given walking time, overlap, and RSVP rules.
+ * Phase 1 hard filter → Phase 2 personalized score → Phase 3 greedy pick.
  */
 export function buildItinerary(
   events: Event[],
@@ -41,63 +40,75 @@ export function buildItinerary(
   now = new Date(),
 ): Itinerary {
   const notes: string[] = [];
-  const selected: { event: Event; meal: MealType; score: number; walk: number }[] =
-    [];
+  const unmatched_meals: MealType[] = [];
+  const selected: {
+    event: Event;
+    meal: MealType;
+    score: number;
+    walk: number;
+    reasons: string[];
+    warnings: string[];
+  }[] = [];
 
   const meals = MEAL_ORDER.filter((meal) => request.meals.includes(meal));
   const candidates = events
     .filter((event) => eventOnDate(event, request.date))
-    .filter((event) => foodAllowed(event, request))
     .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
 
   for (const meal of meals) {
-    const mealCandidates = candidates.filter((event) => mealMatchScore(event, meal) > 0);
-    if (mealCandidates.length === 0) {
-      notes.push(`No ${meal} candidates matched this date and food confidence.`);
-      continue;
-    }
-
     const previous = selected.at(-1)?.event ?? null;
     const originId = previous?.building_id ?? request.start_building_id;
-    const scored = mealCandidates
+    const scored = candidates
       .map((event) => {
         const walk = previous
           ? walkingMinutesForPair(previous, event)
           : walkingMinutesBetween(originId, event.building_id);
-        const score = scoreEvent({ event, meal, walkingMinutes: walk, now });
-        return { event, score, walk };
-      })
-      .filter(({ event, walk }) => {
-        if (walk > request.max_walking_minutes && event.building_id !== originId) {
-          return false;
-        }
-        return canAttend(previous, event, walk, {
-          allowExpiredRegistration: request.allow_expired_registration,
+        const matched = matchEvent({
+          event,
+          meal,
+          walkingMinutes: walk,
+          originBuildingId: originId,
+          previous,
+          request,
           now,
         });
+        return { event, walk, matched };
       })
-      .filter(({ event }) => !selected.some((item) => item.event.id === event.id))
+      .filter(({ event }) => !selected.some((item) => item.event.id === event.id));
+
+    const feasible = scored
+      .filter(({ matched }) => matched.hardConstraintPassed)
       .sort((a, b) => {
-        if (b.score !== a.score) return b.score - a.score;
+        if (b.matched.totalScore !== a.matched.totalScore) {
+          return b.matched.totalScore - a.matched.totalScore;
+        }
         return tieBreak(a.event, b.event);
       });
 
-    const best = scored[0];
+    const best = feasible[0];
     if (!best) {
-      const expired = mealCandidates.some(
-        (event) =>
-          event.registration_required &&
-          event.registration_deadline &&
-          new Date(event.registration_deadline).getTime() < now.getTime(),
-      );
-      notes.push(
-        expired
-          ? `No feasible ${meal}: remaining options have expired registration or walking conflicts.`
-          : `No feasible ${meal} within ${request.max_walking_minutes} minutes of walking.`,
-      );
+      unmatched_meals.push(meal);
+      const rejected = scored.flatMap(({ matched }) => matched.rejectionReasons);
+      if (rejected.some((reason) => /expired|deadline/i.test(reason))) {
+        notes.push(`No reliable ${meal}: remaining options have expired registration or walking conflicts.`);
+      } else if (rejected.some((reason) => /walking/i.test(reason))) {
+        notes.push(`No feasible ${meal} within ${request.max_walking_minutes} minutes of walking.`);
+      } else if (rejected.some((reason) => /incompatible/i.test(reason))) {
+        notes.push(`No reliable ${meal}: remaining food is incompatible with your diet.`);
+      } else {
+        notes.push(`No ${meal} candidates matched this date and food confidence.`);
+      }
       continue;
     }
-    selected.push({ ...best, meal });
+
+    selected.push({
+      event: best.event,
+      meal,
+      score: best.matched.totalScore,
+      walk: best.walk,
+      reasons: best.matched.positiveReasons,
+      warnings: best.matched.warnings,
+    });
   }
 
   const items: ItineraryLeg[] = [];
@@ -113,19 +124,12 @@ export function buildItinerary(
     const to = getBuilding(pick.event.building_id);
 
     if (cursorBuilding !== pick.event.building_id) {
+      const viaNote = campusWalkHint(cursorBuilding, pick.event.building_id ?? "");
       items.push({
         kind: "leave",
         at: leaveAt,
         title: `Leave ${from?.short_name ?? "start"}`,
-        subtitle: `Walk about ${walk} min to ${to?.short_name ?? "event"}`,
-        walking_minutes: walk,
-        from_building_id: cursorBuilding,
-        to_building_id: pick.event.building_id ?? undefined,
-      });
-      items.push({
-        kind: "walk",
-        at: leaveAt,
-        title: `Walk to ${to?.short_name ?? "event"}`,
+        subtitle: `Walk about ${walk} min to ${to?.short_name ?? "event"}${viaNote ? ` ${viaNote}` : ""}`,
         walking_minutes: walk,
         from_building_id: cursorBuilding,
         to_building_id: pick.event.building_id ?? undefined,
@@ -141,6 +145,8 @@ export function buildItinerary(
       meal_type: pick.meal,
       walking_minutes: walk,
       score: pick.score,
+      positive_reasons: pick.reasons,
+      warnings: pick.warnings,
     });
 
     cursorBuilding = pick.event.building_id ?? cursorBuilding;
@@ -152,11 +158,17 @@ export function buildItinerary(
   if (selected.length === 0) {
     notes.unshift("No itinerary could be built for these preferences.");
   }
+  for (const meal of unmatched_meals) {
+    if (!notes.some((note) => note.toLowerCase().includes(meal))) {
+      notes.push(`No reliable option for ${meal}.`);
+    }
+  }
 
+  const planned = selected.map((item) => item.event);
   return {
     date: request.date,
-    items: items.filter((item) => item.kind !== "walk"),
-    events: selected.map((item) => item.event),
+    items,
+    events: planned,
     meal_count: mealCount,
     event_count: selected.length,
     total_walking_minutes: totalWalk,
@@ -164,6 +176,8 @@ export function buildItinerary(
     savings_assumption:
       "Rough illustration only: $12 per free meal. Not a factual savings calculation.",
     notes,
+    unmatched_meals,
+    required_actions: requiredActionsForEvents(planned, request.date, now),
   };
 }
 

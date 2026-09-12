@@ -2,15 +2,16 @@ import { hasLlmCredentials, SERVER_CONFIG } from "@/lib/config";
 import type { EventExtraction } from "@/lib/extraction/event-schema";
 import { parseEventExtractions } from "@/lib/extraction/event-schema";
 import type { EventExtractor, ExtractionInput } from "@/lib/extraction/heuristic-extractor";
+import { completeOpenAiJson } from "@/lib/llm/chat";
+
+export { parseJsonFromModelText, textFromChatMessage } from "@/lib/llm/chat";
 
 /**
- * Scaffolded LLM adapter. Does not make network calls unless credentials
- * exist AND EXTRACTION_PROVIDER=llm. Invalid model JSON is rejected.
- *
- * Manual step remaining: provide an API key and set EXTRACTION_PROVIDER=llm.
+ * OpenAI-compatible chat extractor. Works with OpenAI, IFM K2 Horizon, and
+ * other /v1/chat/completions hosts. Invalid model JSON is rejected.
  */
 export class LLMEventExtractor implements EventExtractor {
-  readonly name = "llm-v1-scaffold";
+  readonly name = "llm-v1";
 
   async extract(input: ExtractionInput): Promise<EventExtraction[]> {
     const provider = llmProvider();
@@ -40,16 +41,25 @@ function llmProvider(): Provider | null {
   return null;
 }
 
+const EXTRACTION_JSON_CONTRACT = [
+  "Return ONLY JSON. No markdown. No preamble.",
+  "Shape: {\"events\": EventExtraction[]}",
+  "Each EventExtraction MUST use these keys exactly:",
+  '{"title":"Saturday Lunch","description":"Lunch will be provided.","organizer":"HackCMU","startTime":"2026-09-12T12:00:00-04:00","endTime":"2026-09-12T13:30:00-04:00","venueRaw":"CUC Rangos","room":null,"food":{"status":"EXPLICIT","types":["lunch"],"confidence":0.95,"evidence":"Lunch will be provided."},"registration":{"required":false,"url":null,"deadline":null}}',
+  "Rules: never invent food/dates/rooms. Unknown values are null.",
+  "food.status is EXPLICIT | LIKELY | POSSIBLE | NONE.",
+  "food.types items are breakfast|brunch|lunch|dinner|pizza|snacks|dessert|refreshments|drinks|catering|unknown.",
+  "startTime/endTime are ISO 8601 with offset in America/New_York, or null.",
+].join("\n");
+
 function buildPrompt(input: ExtractionInput): string {
   return [
     "Extract campus events from the source text.",
-    "Never invent food, dates, rooms, or registration details.",
-    "If unknown, use null. Copy a short food evidence phrase when food is claimed.",
+    EXTRACTION_JSON_CONTRACT,
     `Source URL: ${input.sourceUrl}`,
     `Page title: ${input.title}`,
     `Timezone: ${input.timezone ?? "America/New_York"}`,
     `Date context: ${input.sourceDateContext ?? "unknown"}`,
-    "Return JSON array matching EventExtractionSchema.",
     "---",
     input.text,
   ].join("\n");
@@ -57,39 +67,28 @@ function buildPrompt(input: ExtractionInput): string {
 
 async function callProvider(provider: Provider, prompt: string): Promise<unknown> {
   if (provider === "openai") {
-    const res = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${SERVER_CONFIG.openaiApiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "gpt-4.1-mini",
-        temperature: 0,
-        response_format: { type: "json_object" },
-        messages: [
-          {
-            role: "system",
-            content:
-              "Return JSON of the form {\"events\": EventExtraction[]}. Never invent facts.",
-          },
-          { role: "user", content: prompt },
-        ],
-      }),
+    const raw = await completeOpenAiJson({
+      system: EXTRACTION_JSON_CONTRACT,
+      user: prompt,
+      maxTokens: 8192,
     });
-    if (!res.ok) throw new Error(`OpenAI HTTP ${res.status}`);
-    const json = (await res.json()) as {
-      choices?: { message?: { content?: string } }[];
-    };
-    const content = json.choices?.[0]?.message?.content;
-    if (!content) throw new Error("OpenAI returned empty content");
-    const parsed = JSON.parse(content) as { events?: unknown };
-    return parsed.events ?? parsed;
+    return unwrapExtractionPayload(raw);
   }
 
   throw new Error(
     `Provider ${provider} is scaffolded but not implemented without additional SDK work.`,
   );
+}
+
+export function unwrapExtractionPayload(value: unknown): unknown {
+  if (Array.isArray(value)) return value;
+  if (value && typeof value === "object" && "events" in value) {
+    return (value as { events: unknown }).events;
+  }
+  if (value && typeof value === "object" && "title" in value) {
+    return [value];
+  }
+  return value;
 }
 
 function repairExtraction(item: EventExtraction): EventExtraction {

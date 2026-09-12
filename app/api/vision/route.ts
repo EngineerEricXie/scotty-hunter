@@ -7,6 +7,7 @@ const Body = z.object({
   name: z.string(),
   size: z.number(),
   type: z.string(),
+  eventId: z.string().nullable().optional(),
 });
 
 export async function POST(request: Request) {
@@ -21,13 +22,16 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "File too large." }, { status: 400 });
   }
   const vision = getFoodVisionService();
-  const result = await vision.analyze(
-    parsed.data.name,
-    parsed.data.size,
-    parsed.data.type,
-  );
+  const result = await vision.analyze({
+    fileName: parsed.data.name,
+    byteLength: parsed.data.size,
+    mime: parsed.data.type,
+    eventId: parsed.data.eventId,
+  });
   return NextResponse.json({
     ...result,
-    note: "Mock food labels. Real vision APIs are deferred until a provider key exists.",
+    note: result.hiddenMenu
+      ? "Table photo matched a hidden menu the public listing omitted."
+      : "Mock food labels. Real vision APIs are deferred until a provider key exists.",
   });
 }

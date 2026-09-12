@@ -92,6 +92,49 @@ const POSSIBLE_PATTERNS: { re: RegExp; types: FoodType[]; confidence: number }[]
     { re: /\bhappy hour\b/i, types: ["drinks"], confidence: 0.38 },
   ];
 
+const ITEM_PATTERNS: { re: RegExp; item: string }[] = [
+  { re: /\bpizza\b/i, item: "pizza" },
+  { re: /\bsandwich(es)?\b/i, item: "sandwiches" },
+  { re: /\btacos?\b/i, item: "tacos" },
+  { re: /\bsalad\b/i, item: "salad" },
+  { re: /\b(pastries|pastry|croissant)/i, item: "pastries" },
+  { re: /\bcoffee\b/i, item: "coffee" },
+  { re: /\bbagels?\b/i, item: "bagels" },
+  { re: /\bcookies?\b/i, item: "cookies" },
+];
+
+const CUISINE_PATTERNS: { re: RegExp; tag: string }[] = [
+  { re: /\bchinese\b/i, tag: "Chinese" },
+  { re: /\bkorean\b/i, tag: "Korean" },
+  { re: /\bjapanese\b/i, tag: "Japanese" },
+  { re: /\bindian\b/i, tag: "Indian" },
+  { re: /\bmediterranean\b/i, tag: "Mediterranean" },
+  { re: /\bmexican\b/i, tag: "Mexican" },
+  { re: /\bitalian\b/i, tag: "Italian" },
+  { re: /\basian (food|catering|cuisine)?\b/i, tag: "Asian" },
+  { re: /\bamerican\b/i, tag: "American" },
+];
+
+const DIETARY_COMPATIBLE: { re: RegExp; tag: string }[] = [
+  { re: /\bvegetarian options?\b/i, tag: "vegetarian" },
+  { re: /\bvegetarian pizza\b/i, tag: "vegetarian" },
+  { re: /\bvegetarian(?:-friendly)?\b/i, tag: "vegetarian" },
+  { re: /\bvegan\b/i, tag: "vegan" },
+  { re: /\bhalal\b/i, tag: "halal" },
+  { re: /\bkosher\b/i, tag: "kosher" },
+  { re: /\bgluten[-\s]?free\b/i, tag: "gluten-free" },
+  { re: /\bdairy[-\s]?free\b/i, tag: "dairy-free" },
+  { re: /\bnut[-\s]?free\b/i, tag: "nut-free" },
+];
+
+const DIETARY_INCOMPATIBLE: { re: RegExp; tag: string }[] = [
+  { re: /\bmeat[-\s]?only\b/i, tag: "meat" },
+  { re: /\bno vegetarian\b/i, tag: "meat" },
+  { re: /\bpepperoni only\b/i, tag: "meat" },
+  { re: /\bsteak lunch\b/i, tag: "meat" },
+  { re: /\b(pulled pork|brisket) (bbq|barbecue)\b/i, tag: "meat" },
+];
+
 function firstMatch(
   text: string,
   patterns: { re: RegExp; types: FoodType[]; confidence: number }[],
@@ -137,11 +180,43 @@ function mealTypesFromContext(text: string, types: FoodType[]): FoodType[] {
   return [...types, ...extra];
 }
 
+export function extractFoodMetadata(text: string): {
+  items: string[];
+  cuisine_tags: string[];
+  dietary_tags: string[];
+} {
+  const items: string[] = [];
+  for (const pattern of ITEM_PATTERNS) {
+    if (pattern.re.test(text) && !items.includes(pattern.item)) items.push(pattern.item);
+  }
+  const cuisine_tags: string[] = [];
+  for (const pattern of CUISINE_PATTERNS) {
+    if (pattern.re.test(text) && !cuisine_tags.includes(pattern.tag)) {
+      cuisine_tags.push(pattern.tag);
+    }
+  }
+  const dietary_tags: string[] = [];
+  for (const pattern of DIETARY_INCOMPATIBLE) {
+    if (pattern.re.test(text) && !dietary_tags.includes(pattern.tag)) {
+      dietary_tags.push(pattern.tag);
+    }
+  }
+  for (const pattern of DIETARY_COMPATIBLE) {
+    if (pattern.re.test(text) && !dietary_tags.includes(pattern.tag)) {
+      dietary_tags.push(pattern.tag);
+    }
+  }
+  return { items, cuisine_tags, dietary_tags };
+}
+
 export function classifyFood(text: string): FoodClassification {
   const source = text.trim();
+  const emptyMeta = { items: [] as string[], cuisine_tags: [] as string[], dietary_tags: [] as string[] };
   if (!source) {
-    return { status: "NONE", types: [], confidence: 0, evidence: null };
+    return { status: "NONE", types: [], confidence: 0, evidence: null, ...emptyMeta };
   }
+
+  const meta = extractFoodMetadata(source);
 
   if (NEGATION.test(source)) {
     const match = source.match(NEGATION);
@@ -150,6 +225,7 @@ export function classifyFood(text: string): FoodClassification {
       types: [],
       confidence: 0,
       evidence: match?.[0] ? clipEvidence(source, match[0]) : null,
+      ...emptyMeta,
     };
   }
 
@@ -160,6 +236,7 @@ export function classifyFood(text: string): FoodClassification {
       types: mealTypesFromContext(source, explicit.types),
       confidence: explicit.confidence,
       evidence: explicit.evidence,
+      ...meta,
     };
   }
 
@@ -170,6 +247,7 @@ export function classifyFood(text: string): FoodClassification {
       types: mealTypesFromContext(source, likely.types),
       confidence: likely.confidence,
       evidence: likely.evidence,
+      ...meta,
     };
   }
 
@@ -180,10 +258,11 @@ export function classifyFood(text: string): FoodClassification {
       types: mealTypesFromContext(source, possible.types),
       confidence: possible.confidence,
       evidence: possible.evidence,
+      ...meta,
     };
   }
 
-  return { status: "NONE", types: [], confidence: 0, evidence: null };
+  return { status: "NONE", types: [], confidence: 0, evidence: null, ...emptyMeta };
 }
 
 export function foodStatusRank(status: FoodStatus): number {

@@ -1,41 +1,21 @@
 import { describe, expect, it } from "vitest";
+import { withEventDefaults } from "@/lib/personalization/event-fields";
 import { applyCorpusBoost, titleSimilarity, boostEvent } from "@/lib/community/boost";
 import type { Event } from "@/lib/types";
 
 function event(partial: Partial<Event> & Pick<Event, "id" | "title">): Event {
-  return {
-    source_id: "t",
-    source_external_id: null,
-    description: "",
-    organizer: "HackCMU",
+  return withEventDefaults({
     start_time: "2026-09-12T16:00:00.000Z",
-    end_time: null,
-    timezone: "America/New_York",
-    source_url: null,
-    source_type: "company_event",
+    organizer: "HackCMU",
     venue_raw: "CUC",
     building_id: "cuc",
-    room: null,
-    floor: null,
     location_confidence: 1,
     food_status: "EXPLICIT",
     food_types: ["lunch"],
     food_confidence: 0.7,
     food_evidence: "Lunch will be provided",
-    registration_required: false,
-    registration_url: null,
-    registration_deadline: null,
-    eligibility: null,
-    capacity_notes: null,
-    raw_content_hash: null,
-    extraction_version: "t",
-    provenance_note: "t",
-    fingerprint: partial.id,
-    last_checked_at: "2026-09-12T00:00:00.000Z",
-    created_at: "2026-09-12T00:00:00.000Z",
-    updated_at: "2026-09-12T00:00:00.000Z",
     ...partial,
-  };
+  });
 }
 
 describe("similar wording boosts food probability", () => {

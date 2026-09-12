@@ -1,4 +1,4 @@
-import { classifyFood } from "@/lib/extraction/classify-food";
+import { extractFoodMetadata, classifyFood } from "@/lib/extraction/classify-food";
 import { describe, expect, it } from "vitest";
 
 describe("food classification", () => {
@@ -36,9 +36,9 @@ describe("food classification", () => {
     expect(result.confidence).toBe(0);
   });
 
-  it("does not mark explicit without evidence", () => {
-    const result = classifyFood("Weekly staff meeting in GHC 4307.");
-    expect(result.status).toBe("NONE");
-    expect(result.evidence).toBeNull();
+  it("does not mark pizza as vegetarian without sourced language", () => {
+    const meta = extractFoodMetadata("Pizza will be provided.");
+    expect(meta.items).toContain("pizza");
+    expect(meta.dietary_tags).not.toContain("vegetarian");
   });
 });

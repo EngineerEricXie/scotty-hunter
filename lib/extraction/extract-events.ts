@@ -1,6 +1,6 @@
 import { APP_TIMEZONE } from "@/lib/config";
 import { sha256, shortId } from "@/lib/hash";
-import { classifyFood } from "@/lib/extraction/classify-food";
+import { classifyFood, extractFoodMetadata } from "@/lib/extraction/classify-food";
 import type { EventExtraction } from "@/lib/extraction/event-schema";
 import {
   canUseLlmExtractor,
@@ -14,6 +14,10 @@ import {
 import { normalizeLocation } from "@/lib/extraction/normalize-location";
 import { eventFingerprint } from "@/lib/dedup/fingerprint";
 import type { Event, SourceType } from "@/lib/types";
+import {
+  locationStatusFromConfidence,
+  registrationStatusFromEvent,
+} from "@/lib/personalization/event-fields";
 
 export const EXTRACTION_VERSION = "heuristic-v1";
 
@@ -29,6 +33,7 @@ export function extractionToEvent(
     sourceType: SourceType;
     sourceUrl: string | null;
     provenanceNote: string;
+    extractionVersion?: string;
     now?: Date;
   },
 ): Event | null {
@@ -37,13 +42,24 @@ export function extractionToEvent(
   const location = normalizeLocation(
     [extraction.venueRaw, extraction.room].filter(Boolean).join(" "),
   );
+  const classified = classifyFood(
+    [extraction.title, extraction.description, extraction.food.evidence]
+      .filter(Boolean)
+      .join("\n"),
+  );
   const food = extraction.food.evidence
-    ? extraction.food
-    : classifyFood(
-        [extraction.title, extraction.description, extraction.food.evidence]
-          .filter(Boolean)
-          .join("\n"),
-      );
+    ? { ...classified, ...extraction.food, evidence: extraction.food.evidence }
+    : classified;
+  const meta = extractFoodMetadata(
+    [extraction.title, extraction.description, food.evidence].filter(Boolean).join("\n"),
+  );
+  const food_items = [...new Set([...(extraction.food.items ?? []), ...meta.items, ...(food.items ?? [])])];
+  const cuisine_tags = [
+    ...new Set([...(extraction.food.cuisineTags ?? []), ...meta.cuisine_tags, ...(food.cuisine_tags ?? [])]),
+  ];
+  const dietary_tags = [
+    ...new Set([...(extraction.food.dietaryTags ?? []), ...meta.dietary_tags, ...(food.dietary_tags ?? [])]),
+  ];
 
   const now = (options.now ?? new Date()).toISOString();
   const fingerprint = eventFingerprint({
@@ -71,19 +87,29 @@ export function extractionToEvent(
     room: location.room ?? extraction.room,
     floor: location.floor,
     location_confidence: location.resolution_confidence,
+    location_status: locationStatusFromConfidence(location.resolution_confidence),
     food_status: food.status,
     food_types: food.types,
+    food_items,
+    cuisine_tags,
+    dietary_tags,
     food_confidence: food.confidence,
     food_evidence: food.evidence,
     registration_required: extraction.registration.required === true,
+    registration_status: registrationStatusFromEvent({
+      registration_required: extraction.registration.required,
+      registration_url: extraction.registration.url,
+      registration_deadline: extraction.registration.deadline,
+    }),
     registration_url: extraction.registration.url,
     registration_deadline: extraction.registration.deadline,
+    event_types: extraction.eventTypes ?? [],
     eligibility: null,
     capacity_notes: null,
     raw_content_hash: sha256(
       `${extraction.title}|${extraction.startTime}|${extraction.description ?? ""}`,
     ),
-    extraction_version: EXTRACTION_VERSION,
+    extraction_version: options.extractionVersion ?? EXTRACTION_VERSION,
     provenance_note: options.provenanceNote,
     fingerprint,
     last_checked_at: now,
@@ -109,6 +135,7 @@ export async function extractEventsFromText(
         sourceType: meta.sourceType,
         sourceUrl: input.sourceUrl,
         provenanceNote: meta.provenanceNote,
+        extractionVersion: extractor.name,
       }),
     )
     .filter((event): event is Event => event !== null);

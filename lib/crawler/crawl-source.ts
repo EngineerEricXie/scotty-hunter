@@ -1,4 +1,4 @@
-import { extractEventsFromText } from "@/lib/extraction/extract-events";
+import { extractEventsFromText, getEventExtractor } from "@/lib/extraction/extract-events";
 import { extractReadableText } from "@/lib/crawler/extract-readable-text";
 import { fetchPublicHtml } from "@/lib/crawler/fetch-source";
 import { sha256 } from "@/lib/hash";
@@ -72,7 +72,7 @@ export async function crawlSource(
       {
         sourceId: source.id,
         sourceType: source.source_type,
-        provenanceNote: `Live public HTML fetch of ${fetched.url}. Extraction used the local heuristic extractor, not an LLM.`,
+        provenanceNote: `Live public HTML fetch of ${fetched.url}. Extraction used ${getEventExtractor().name}.`,
       },
     );
     return {
@@ -130,7 +130,7 @@ async function crawlFixture(source: Source, fetchedAt: string): Promise<CrawlRep
       sourceId: source.id,
       sourceType: "pdf",
       provenanceNote:
-        "Deterministic fixture derived from HackCMU 2026 schedule text (not a live PDF scrape).",
+        `Deterministic fixture derived from HackCMU 2026 schedule text (not a live PDF scrape). Extraction used ${getEventExtractor().name}.`,
     },
   );
 

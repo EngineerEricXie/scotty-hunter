@@ -147,6 +147,9 @@ export class HeuristicEventExtractor implements EventExtractor {
         food: {
           status: food.status,
           types: food.types,
+          items: food.items,
+          cuisineTags: food.cuisine_tags,
+          dietaryTags: food.dietary_tags,
           confidence: food.confidence,
           evidence: food.evidence,
         },

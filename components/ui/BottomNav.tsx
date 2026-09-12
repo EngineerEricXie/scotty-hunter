@@ -1,13 +1,29 @@
-import Link from "next/link";
+"use client";
+
+import { useRouter } from "next/navigation";
 
 const ITEMS = [
-  { href: "/", label: "MAP", glyph: "▣" },
-  { href: "/plan", label: "PLAN", glyph: "▦" },
-  { href: "/scotty", label: "SCOTTY", glyph: "▼" },
-  { href: "/todos", label: "QUEST", glyph: "!" },
+  { id: "map", href: "/", label: "MAP", icon: "/icons/nav-map.png" },
+  { id: "plan", href: "/?panel=plan", label: "PLAN", icon: "/icons/nav-plan.png" },
+  { id: "scotty", href: "/?panel=scotty", label: "SCOTTY", icon: "/icons/nav-scotty.png" },
+  { id: "quest", href: "/?panel=quest", label: "QUEST", icon: "/icons/nav-quest.png" },
 ] as const;
 
-export function BottomNav({ current }: { current: string }) {
+export function BottomNav({
+  current,
+  onSelectMap,
+  onSelectPlan,
+  onSelectScotty,
+  onSelectQuest,
+}: {
+  current: string;
+  onSelectMap?: () => void;
+  onSelectPlan?: () => void;
+  onSelectScotty?: () => void;
+  onSelectQuest?: () => void;
+}) {
+  const router = useRouter();
+
   return (
     <nav
       aria-label="Primary"
@@ -15,21 +31,51 @@ export function BottomNav({ current }: { current: string }) {
     >
       <div className="pixel-panel flex items-stretch justify-around bg-card px-1 py-1">
         {ITEMS.map((item) => {
-          const active = current === item.href || (item.href === "/scotty" && current === "/profile");
+          const active =
+            item.id === "plan"
+              ? current === "/plan" || current === "/?panel=plan"
+              : item.id === "quest"
+                ? current === "/todos" || current === "/?panel=quest"
+                : current === item.href ||
+                  (item.id === "scotty" && (current === "/scotty" || current === "/profile"));
+          const className = `flex min-h-12 min-w-16 flex-col items-center justify-center gap-0.5 px-1.5 text-[11px] font-bold ${
+            active ? "bg-ink text-gold" : "text-ink"
+          }`;
+
           return (
-            <Link
-              key={item.href}
-              href={item.href}
+            <button
+              key={item.id}
+              type="button"
               aria-current={active ? "page" : undefined}
-              className={`flex min-h-12 min-w-16 flex-col items-center justify-center gap-0.5 px-2 text-[11px] font-bold ${
-                active ? "bg-ink text-gold" : "text-ink"
-              }`}
+              className={className}
+              onClick={() => {
+                if (item.id === "map") {
+                  if (onSelectMap) onSelectMap();
+                  else router.push("/");
+                  return;
+                }
+                if (item.id === "plan") {
+                  if (onSelectPlan) onSelectPlan();
+                  else router.push("/?panel=plan");
+                  return;
+                }
+                if (item.id === "scotty") {
+                  if (onSelectScotty) onSelectScotty();
+                  else router.push("/?panel=scotty");
+                  return;
+                }
+                if (onSelectQuest) onSelectQuest();
+                else router.push("/?panel=quest");
+              }}
             >
-              <span aria-hidden className="hud text-[10px] leading-none">
-                {item.glyph}
-              </span>
+              <img
+                src={item.icon}
+                alt=""
+                aria-hidden
+                className={`pixel-sprite h-7 w-7 ${active ? "brightness-110 contrast-125" : ""}`}
+              />
               <span className="hud text-[8px]">{item.label}</span>
-            </Link>
+            </button>
           );
         })}
       </div>

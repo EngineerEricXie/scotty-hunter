@@ -2,9 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { liveNowGoing, onScottyChange, type NowGoingPing } from "@/lib/scotty/state";
+import { demoNowMs } from "@/lib/demo-clock";
 
 function recency(iso: string): string {
-  const min = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60_000));
+  const min = Math.max(0, Math.round((demoNowMs() - new Date(iso).getTime()) / 60_000));
   if (min < 1) return "NOW";
   return `${min}m`;
 }

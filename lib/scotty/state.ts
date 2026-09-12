@@ -1,6 +1,8 @@
-import type { Event } from "@/lib/types";
 import { ATLAS_SPECIES, matchAtlasIds } from "@/lib/scotty/atlas";
+import { getHiddenMenu, type HiddenMenu } from "@/lib/vision/hidden-menu";
 import { loadPoints } from "@/lib/storage/local-state";
+import { APP_CONFIG } from "@/lib/config";
+import { demoNowMs } from "@/lib/demo-clock";
 
 const KEY = "scottybites:scotty";
 const LIVE_MS = 45 * 60_000;
@@ -23,6 +25,11 @@ export interface PhotoCheckIn {
   created_at: string;
 }
 
+export interface UnlockedMenu {
+  eventId: string;
+  unlockedAt: string;
+}
+
 export interface NowGoingPing {
   id: string;
   eventId: string;
@@ -34,14 +41,26 @@ export interface NowGoingPing {
   at: string;
 }
 
+export type HunterAnimal = "squirrel" | "raccoon" | "cardinal" | "terrier";
+
+export interface TartanHunter {
+  id: string;
+  name: string;
+  animal: HunterAnimal;
+  points: number;
+}
+
 export interface ScottyState {
   name: string;
+  hunterName: string;
+  hunters: TartanHunter[];
   points: number;
   xp: number;
   hunger: number;
   lastFedAt: string | null;
   atlas: Record<string, AtlasEntry>;
   checkins: PhotoCheckIn[];
+  unlockedMenus: Record<string, UnlockedMenu>;
   nowGoing: NowGoingPing[];
   quests: Record<string, boolean>;
   seenSplash: boolean;
@@ -52,18 +71,35 @@ export interface ScottyState {
 export const QUESTS = [
   { id: "snap", title: "SNAP A DISH", detail: "Photograph free food and let Scotty grade it.", xp: 20 },
   { id: "feed", title: "FEED SCOTTY", detail: "Turn a confirmed photo into a treat.", xp: 12 },
+  { id: "hidden", title: "UNLOCK HIDDEN MENU", detail: "Snap a table photo and reveal dishes the listing omitted.", xp: 18 },
   { id: "radar", title: "PING THE RADAR", detail: "Report plenty / some at a live table.", xp: 8 },
   { id: "atlas3", title: "CATCH 3 SPECIES", detail: "Fill three Food Dex entries.", xp: 15 },
 ] as const;
 
+export const HUNTER_SPRITES: Record<HunterAnimal, string> = {
+  squirrel: "/sprites/hunter-squirrel.png",
+  raccoon: "/sprites/hunter-raccoon.png",
+  cardinal: "/sprites/hunter-cardinal.png",
+  terrier: "/sprites/scotty-idle.png",
+};
+
+export const DEFAULT_HUNTERS: TartanHunter[] = [
+  { id: "pixel-tartan", name: "PixelTartan", animal: "squirrel", points: 186 },
+  { id: "rangos", name: "RangosRaider", animal: "raccoon", points: 142 },
+  { id: "wean", name: "WeanWalker", animal: "cardinal", points: 97 },
+];
+
 const DEFAULT_STATE: ScottyState = {
   name: "Scotty",
+  hunterName: "YOU",
+  hunters: DEFAULT_HUNTERS,
   points: 0,
   xp: 0,
   hunger: 42,
   lastFedAt: null,
   atlas: {},
   checkins: [],
+  unlockedMenus: {},
   nowGoing: [],
   quests: {},
   seenSplash: false,
@@ -81,10 +117,21 @@ function read(): ScottyState {
   try {
     const raw = window.localStorage.getItem(KEY);
     if (!raw) return migrateFirstRun();
-    return { ...DEFAULT_STATE, ...(JSON.parse(raw) as ScottyState) };
+    return normalize({ ...DEFAULT_STATE, ...(JSON.parse(raw) as ScottyState) });
   } catch {
     return { ...DEFAULT_STATE };
   }
+}
+
+function normalize(state: ScottyState): ScottyState {
+  return {
+    ...DEFAULT_STATE,
+    ...state,
+    hunters: Array.isArray(state.hunters) && state.hunters.length > 0 ? state.hunters : DEFAULT_HUNTERS,
+    hunterName: state.hunterName?.trim() || "YOU",
+    name: state.name?.trim() || "Scotty",
+    unlockedMenus: state.unlockedMenus && typeof state.unlockedMenus === "object" ? state.unlockedMenus : {},
+  };
 }
 
 function write(state: ScottyState) {
@@ -94,43 +141,95 @@ function write(state: ScottyState) {
   notify();
 }
 
+function demoLivePings(now: number): NowGoingPing[] {
+  return [
+    {
+      id: "demo-ri-pizza",
+      eventId: "demo-ri-pizza",
+      title: "Robotics Institute pizza talk",
+      buildingId: "nsh",
+      dish: "RI pizza",
+      handle: "GatesScout",
+      kind: "demo",
+      at: new Date(now - 4 * 60_000).toISOString(),
+    },
+    {
+      id: "demo-lunch",
+      eventId: "hackcmu-2026-saturday-lunch",
+      title: "Saturday Lunch",
+      buildingId: "cuc",
+      dish: "Hackathon Pizza",
+      handle: "PixelTartan",
+      kind: "demo",
+      at: new Date(now - 8 * 60_000).toISOString(),
+    },
+    {
+      id: "demo-tepper-lunch",
+      eventId: "demo-ai-seminar-lunch",
+      title: "AI Seminar: Grounded Campus Agents",
+      buildingId: "tepper",
+      dish: "Seminar lunch",
+      handle: "QuadRunner",
+      kind: "demo",
+      at: new Date(now - 14 * 60_000).toISOString(),
+    },
+    {
+      id: "demo-cookie",
+      eventId: "demo-cookie-hour",
+      title: "Cookie Hour",
+      buildingId: "doherty",
+      dish: "Cookie Hour",
+      handle: "WeanWalker",
+      kind: "demo",
+      at: new Date(now - 22 * 60_000).toISOString(),
+    },
+  ];
+}
+
+function syncDemoNowGoing(state: ScottyState): ScottyState {
+  if (!APP_CONFIG.demoMode) return state;
+  const live = demoLivePings(demoNowMs());
+  const kept = state.nowGoing.filter((ping) => ping.kind !== "demo");
+  const next = [...live, ...kept];
+  const same =
+    next.length === state.nowGoing.length &&
+    next.every(
+      (ping, index) => ping.id === state.nowGoing[index]?.id && ping.at === state.nowGoing[index]?.at,
+    );
+  if (same) return state;
+  const synced = { ...state, nowGoing: next, updatedAt: new Date(demoNowMs()).toISOString() };
+  write(synced);
+  return synced;
+}
+
 function migrateFirstRun(): ScottyState {
   const inherited = loadPoints();
-  const now = Date.now();
+  const now = demoNowMs();
   const seeded: ScottyState = {
     ...DEFAULT_STATE,
     points: inherited,
     xp: inherited,
-    createdAt: new Date().toISOString(),
-    nowGoing: [
-      {
-        id: "demo-lunch",
-        eventId: "hackcmu-2026-saturday-lunch",
-        title: "Saturday Lunch",
-        buildingId: "cuc",
-        dish: "Hackathon Pizza",
-        handle: "PixelTartan",
-        kind: "demo",
-        at: new Date(now - 8 * 60_000).toISOString(),
+    createdAt: new Date(now).toISOString(),
+    atlas: {
+      pizza: {
+        count: 1,
+        firstAt: new Date(now).toISOString(),
+        lastAt: new Date(now).toISOString(),
       },
-      {
-        id: "demo-cookie",
-        eventId: "demo-cookie-hour",
-        title: "Cookie Hour",
-        buildingId: "doherty",
-        dish: "Cookie Hour",
-        handle: "WeanWalker",
-        kind: "demo",
-        at: new Date(now - 22 * 60_000).toISOString(),
+      cookie: {
+        count: 1,
+        firstAt: new Date(now).toISOString(),
+        lastAt: new Date(now).toISOString(),
       },
-    ],
+    },
+    nowGoing: demoLivePings(now),
   };
   write(seeded);
   return seeded;
 }
 
 export function loadScotty(): ScottyState {
-  return decayHunger(read());
+  return syncDemoNowGoing(decayHunger(read()));
 }
 
 export function saveScotty(state: ScottyState) {
@@ -170,7 +269,7 @@ export function scottyMood(state: ScottyState): ScottyMood {
   return "ok";
 }
 
-export function liveNowGoing(state: ScottyState = loadScotty(), now = Date.now()): NowGoingPing[] {
+export function liveNowGoing(state: ScottyState = loadScotty(), now = demoNowMs()): NowGoingPing[] {
   return state.nowGoing
     .filter((ping) => now - new Date(ping.at).getTime() <= LIVE_MS)
     .sort((a, b) => b.at.localeCompare(a.at));
@@ -195,7 +294,7 @@ export function pingNowGoing(input: {
     title: input.title,
     buildingId: input.buildingId,
     dish: input.dish,
-    handle: input.handle ?? "YOU",
+    handle: input.handle ?? state.hunterName,
     kind: input.kind,
     at: new Date().toISOString(),
   };
@@ -246,6 +345,9 @@ export function confirmPhoto(input: {
   };
   state.checkins = [...state.checkins, checkin];
   state.quests = { ...state.quests, snap: true, feed: true };
+  if (input.eventId && getHiddenMenu(input.eventId)) {
+    applyMenuUnlock(state, input.eventId, now);
+  }
   if (Object.keys(state.atlas).length >= 3) state.quests = { ...state.quests, atlas3: true };
   state.nowGoing = [
     ...state.nowGoing,
@@ -255,7 +357,7 @@ export function confirmPhoto(input: {
       title: input.title ?? "Campus catch",
       buildingId: input.buildingId ?? null,
       dish: ATLAS_SPECIES.find((s) => s.id === atlasIds[0])?.name ?? input.labels[0] ?? "Food",
-      handle: "YOU",
+      handle: state.hunterName,
       kind: "photo",
       at: now,
     },
@@ -276,8 +378,68 @@ export function feedTreat(): ScottyState | { error: string } {
   return state;
 }
 
+function applyMenuUnlock(state: ScottyState, eventId: string, at: string): boolean {
+  if (!getHiddenMenu(eventId)) return false;
+  const first = !state.unlockedMenus[eventId];
+  state.unlockedMenus = {
+    ...state.unlockedMenus,
+    [eventId]: { eventId, unlockedAt: state.unlockedMenus[eventId]?.unlockedAt ?? at },
+  };
+  if (first) {
+    state.quests = { ...state.quests, hidden: true };
+    state.points += 12;
+    state.xp += 10;
+  }
+  return first;
+}
+
+export function isMenuUnlocked(eventId: string | null | undefined, state: ScottyState = loadScotty()): boolean {
+  if (!eventId) return false;
+  return Boolean(state.unlockedMenus[eventId]);
+}
+
+export function unlockHiddenMenu(eventId: string): { menu: HiddenMenu | null; firstUnlock: boolean } {
+  const menu = getHiddenMenu(eventId);
+  if (!menu) return { menu: null, firstUnlock: false };
+  const state = loadScotty();
+  const firstUnlock = applyMenuUnlock(state, eventId, new Date().toISOString());
+  write(state);
+  return { menu, firstUnlock };
+}
+
+export function listUnlockedMenus(state: ScottyState = loadScotty()): HiddenMenu[] {
+  return Object.keys(state.unlockedMenus)
+    .map((id) => getHiddenMenu(id))
+    .filter((menu): menu is HiddenMenu => Boolean(menu));
+}
+
 export function atlasProgress(state: ScottyState = loadScotty()): { caught: number; total: number } {
   return { caught: Object.keys(state.atlas).length, total: ATLAS_SPECIES.length };
+}
+
+export function sanitizeHandle(name: string, fallback: string) {
+  const next = name.replace(/[<>]/g, "").replace(/\s+/g, " ").trim().slice(0, 18);
+  return next || fallback;
+}
+
+export function renamePet(name: string) {
+  const state = loadScotty();
+  state.name = sanitizeHandle(name, "Scotty");
+  write(state);
+  return state;
+}
+
+export function renameHunter(id: string, name: string) {
+  const state = loadScotty();
+  if (id === "you") {
+    state.hunterName = sanitizeHandle(name, "YOU");
+  } else {
+    state.hunters = state.hunters.map((hunter) =>
+      hunter.id === id ? { ...hunter, name: sanitizeHandle(name, hunter.name) } : hunter,
+    );
+  }
+  write(state);
+  return state;
 }
 
 export function onScottyChange(handler: () => void): () => void {

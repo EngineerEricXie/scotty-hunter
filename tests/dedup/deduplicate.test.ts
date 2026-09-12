@@ -1,19 +1,17 @@
 import { describe, expect, it } from "vitest";
+import { withEventDefaults } from "@/lib/personalization/event-fields";
 import { deduplicateEvents } from "@/lib/dedup/deduplicate-events";
 import { eventFingerprint } from "@/lib/dedup/fingerprint";
 import type { Event } from "@/lib/types";
 
 function base(partial: Partial<Event>): Event {
-  return {
+  return withEventDefaults({
     id: "a",
-    source_id: "one",
-    source_external_id: null,
     title: "AI Seminar",
+    start_time: "2026-09-12T16:00:00.000Z",
+    source_id: "one",
     description: "Short",
     organizer: "MLD",
-    start_time: "2026-09-12T16:00:00.000Z",
-    end_time: null,
-    timezone: "America/New_York",
     source_url: "https://example.edu/event",
     source_type: "department",
     venue_raw: "GHC 4307",
@@ -25,20 +23,12 @@ function base(partial: Partial<Event>): Event {
     food_types: ["lunch"],
     food_confidence: 0.7,
     food_evidence: "Refreshments will be served.",
-    registration_required: false,
-    registration_url: null,
-    registration_deadline: null,
-    eligibility: null,
-    capacity_notes: null,
-    raw_content_hash: null,
-    extraction_version: "test",
     provenance_note: "source one",
-    fingerprint: "",
     last_checked_at: "2026-09-12T00:00:00.000Z",
     created_at: "2026-09-12T00:00:00.000Z",
     updated_at: "2026-09-12T00:00:00.000Z",
     ...partial,
-  };
+  });
 }
 
 describe("deduplication", () => {

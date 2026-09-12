@@ -16,15 +16,26 @@ interface SourceRow {
   parser_type: string;
 }
 
+interface ExtractionInfo {
+  provider?: string;
+  active?: boolean;
+  model?: string | null;
+  endpoint?: string | null;
+}
+
 export function ProfileExperience() {
   const [points, setPoints] = useState(0);
   const [sources, setSources] = useState<SourceRow[]>([]);
+  const [extraction, setExtraction] = useState<ExtractionInfo>({});
 
   useEffect(() => {
     const boot = window.setTimeout(() => setPoints(loadScotty().points), 0);
     fetch("/api/sources")
       .then((res) => res.json())
-      .then((json: { sources?: SourceRow[] }) => setSources(json.sources ?? []))
+      .then((json: { sources?: SourceRow[]; extraction?: ExtractionInfo }) => {
+        setSources(json.sources ?? []);
+        setExtraction(json.extraction ?? {});
+      })
       .catch(() => undefined);
     return () => window.clearTimeout(boot);
   }, []);
@@ -43,7 +54,7 @@ export function ProfileExperience() {
             <p className="text-3xl font-bold">{points}</p>
             <p className="mt-1 text-xs text-white/70">Raise Scotty on the pet screen to earn more.</p>
           </div>
-          <Link href="/scotty" className="pixel-btn mt-3 flex min-h-11 items-center justify-center bg-gold text-sm">
+          <Link href="/?panel=scotty" className="pixel-btn mt-3 flex min-h-11 items-center justify-center bg-gold text-sm">
             OPEN SCOTTY + FOOD DEX
           </Link>
         </div>
@@ -53,10 +64,19 @@ export function ProfileExperience() {
             name="Supabase"
             detail="Repository mode is local-fixture until a Supabase URL and key are provided."
           />
-          <UnavailableIntegration
-            name="LLM extraction"
-            detail="Heuristic extractor is the default. Set EXTRACTION_PROVIDER=llm plus an API key to activate the scaffold."
-          />
+          {extraction.active ? (
+            <div className="border-4 border-ink bg-white/80 px-4 py-3 text-sm">
+              <p className="font-bold text-ink">LLM extraction connected</p>
+              <p className="mt-1 text-muted">
+                {extraction.model} · {extraction.endpoint}
+              </p>
+            </div>
+          ) : (
+            <UnavailableIntegration
+              name="LLM extraction"
+              detail="Heuristic extractor is the default. Set EXTRACTION_PROVIDER=llm plus OPENAI_API_KEY, OPENAI_BASE_URL, and OPENAI_MODEL."
+            />
+          )}
         </section>
 
         <section className="pixel-panel mt-4 bg-card p-4">

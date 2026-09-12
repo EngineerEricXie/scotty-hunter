@@ -54,9 +54,16 @@ export function mergeEvents(a: Event, b: Event): Event {
       richerFood.food_types.length >= a.food_types.length
         ? richerFood.food_types
         : a.food_types,
+    food_items: [...new Set([...(a.food_items ?? []), ...(b.food_items ?? [])])],
+    cuisine_tags: [...new Set([...(a.cuisine_tags ?? []), ...(b.cuisine_tags ?? [])])],
+    dietary_tags: [...new Set([...(a.dietary_tags ?? []), ...(b.dietary_tags ?? [])])],
     food_confidence: richerFood.food_confidence,
     food_evidence: richerFood.food_evidence ?? a.food_evidence ?? b.food_evidence,
     registration_required: a.registration_required || b.registration_required,
+    registration_status:
+      a.registration_required || b.registration_required
+        ? "REQUIRED"
+        : (a.registration_status ?? b.registration_status ?? "NOT_REQUIRED"),
     registration_url: a.registration_url ?? b.registration_url,
     registration_deadline: a.registration_deadline ?? b.registration_deadline,
     eligibility: a.eligibility ?? b.eligibility,

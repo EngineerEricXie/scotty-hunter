@@ -9,10 +9,12 @@ import { isNowGoing } from "@/lib/scotty/state";
 export function PixelCampusMap({
   events,
   selectedId,
+  plannedIds = [],
   onSelect,
 }: {
   events: Event[];
   selectedId: string | null;
+  plannedIds?: string[];
   onSelect: (event: Event) => void;
 }) {
   const frameRef = useRef<HTMLDivElement | null>(null);
@@ -98,6 +100,7 @@ export function PixelCampusMap({
           const style = pixelStyle(building.id);
           const hosted = byBuilding.get(building.id) ?? [];
           const selected = hosted.some((event) => event.id === selectedId);
+          const planned = hosted.some((event) => plannedIds.includes(event.id));
           const going = hosted.some((event) => isNowGoing(event.id));
           const left = (pos.x / 100) * PIXEL_WORLD.width - style.w / 2;
           const top = (pos.y / 100) * PIXEL_WORLD.height - style.h / 2;
@@ -116,7 +119,7 @@ export function PixelCampusMap({
                 onPointerDown={(e) => e.stopPropagation()}
                 onClick={() => hosted[0] && onSelect(hosted[0])}
                 className={`absolute inset-x-0 top-0 grid place-items-end border-4 border-ink ${
-                  selected ? "outline outline-4 outline-gold" : ""
+                  selected ? "outline outline-4 outline-gold" : planned ? "outline outline-4 outline-tartan" : ""
                 }`}
                 style={{ height: style.h, background: style.fill }}
                 aria-label={building.name}
@@ -140,8 +143,9 @@ export function PixelCampusMap({
                     className="food-marker whitespace-nowrap"
                     data-status={event.food_status}
                     data-selected={event.id === selectedId ? "true" : "false"}
+                    data-planned={plannedIds.includes(event.id) ? "true" : "false"}
                     data-going={isNowGoing(event.id) ? "true" : "false"}
-                    aria-label={`${event.title} at ${building.short_name}`}
+                    aria-label={`${event.title} at ${building.short_name}${plannedIds.includes(event.id) ? ", on your plan" : ""}`}
                   >
                     <span aria-hidden>{foodEmoji(event)}</span>
                     <span className="hour">{markerHour(event.start_time)}</span>

@@ -27,7 +27,20 @@ export type FoodType =
 export type MealType = "breakfast" | "lunch" | "dinner" | "snacks";
 
 export type TodoType = "RSVP" | "REGISTER" | "REMINDER";
-export type TodoStatus = "OPEN" | "DONE" | "DISMISSED";
+export type TodoStatus = "OPEN" | "DONE" | "DISMISSED" | "OVERDUE";
+
+export type DietaryCompatibility = "COMPATIBLE" | "INCOMPATIBLE" | "UNKNOWN";
+export type LocationStatus = "RESOLVED" | "PARTIAL" | "UNKNOWN";
+export type RegistrationStatus = "NOT_REQUIRED" | "REQUIRED" | "UNKNOWN";
+export type RsvpWillingness = "yes" | "only_if_worth_it" | "no";
+export type Weekday =
+  | "monday"
+  | "tuesday"
+  | "wednesday"
+  | "thursday"
+  | "friday"
+  | "saturday"
+  | "sunday";
 
 export type AvailabilityStatus = "PLENTY" | "SOME" | "GONE" | "UNKNOWN";
 
@@ -90,15 +103,21 @@ export interface Event {
   room: string | null;
   floor: string | null;
   location_confidence: number | null;
+  location_status: LocationStatus;
   food_status: FoodStatus;
   food_types: FoodType[];
+  food_items: string[];
+  cuisine_tags: string[];
+  dietary_tags: string[];
   food_confidence: number;
   base_confidence?: number;
   boost_reasons?: string[];
   food_evidence: string | null;
   registration_required: boolean;
+  registration_status: RegistrationStatus;
   registration_url: string | null;
   registration_deadline: string | null;
+  event_types: string[];
   eligibility: string | null;
   capacity_notes: string | null;
   raw_content_hash: string | null;
@@ -114,16 +133,30 @@ export interface UserPreference {
   id: string;
   user_id: string;
   preferred_days: string[];
+  campus_days: Weekday[];
   wants_breakfast: boolean;
   wants_lunch: boolean;
   wants_dinner: boolean;
   wants_snacks: boolean;
   max_walking_minutes: number;
+  ideal_walking_minutes: number;
   home_building_id: string;
   usual_building_ids: string[];
+  dietary_constraints: string[];
   dietary_preferences: string[];
+  favorite_foods: string[];
+  disliked_foods: string[];
+  preferred_cuisines: string[];
   include_likely: boolean;
   explicit_only: boolean;
+  allow_possible_food: boolean;
+  willing_to_rsvp: RsvpWillingness;
+  preferred_event_types: string[];
+  disliked_event_types: string[];
+  preferred_campus_zones: string[];
+  seen_onboarding: boolean;
+  last_preference_utterance: string;
+  preference_summary: string;
   created_at: string;
   updated_at: string;
 }
@@ -196,6 +229,44 @@ export interface PlannerRequest {
   include_likely: boolean;
   explicit_only: boolean;
   allow_expired_registration: boolean;
+  allow_possible_food?: boolean;
+  dietary_constraints?: string[];
+  favorite_foods?: string[];
+  disliked_foods?: string[];
+  preferred_cuisines?: string[];
+  willing_to_rsvp?: RsvpWillingness;
+  preferred_event_types?: string[];
+  disliked_event_types?: string[];
+  ideal_walking_minutes?: number;
+  campus_days?: Weekday[];
+  mode?: "day" | "week";
+}
+
+export interface PersonalizedEventScore {
+  eventId: string;
+  hardConstraintPassed: boolean;
+  mealMatch: number;
+  foodConfidenceScore: number;
+  foodPreferenceScore: number;
+  cuisinePreferenceScore: number;
+  dietaryCompatibilityScore: number;
+  walkingScore: number;
+  scheduleFitScore: number;
+  registrationScore: number;
+  eventTypePreferenceScore: number;
+  totalScore: number;
+  positiveReasons: string[];
+  warnings: string[];
+  rejectionReasons: string[];
+}
+
+export interface RequiredAction {
+  when: "today" | "tomorrow" | "later" | "overdue";
+  title: string;
+  deadline: string;
+  event_id: string;
+  event_title: string;
+  registration_url: string | null;
 }
 
 export interface ItineraryLeg {
@@ -209,6 +280,8 @@ export interface ItineraryLeg {
   score?: number;
   from_building_id?: string;
   to_building_id?: string;
+  positive_reasons?: string[];
+  warnings?: string[];
 }
 
 export interface Itinerary {
@@ -220,6 +293,15 @@ export interface Itinerary {
   total_walking_minutes: number;
   estimated_savings_usd: number | null;
   savings_assumption: string;
+  notes: string[];
+  unmatched_meals: MealType[];
+  required_actions: RequiredAction[];
+}
+
+export interface WeekPlan {
+  week_start: string;
+  days: { date: string; weekday: Weekday; itinerary: Itinerary }[];
+  required_actions: RequiredAction[];
   notes: string[];
 }
 
@@ -234,6 +316,9 @@ export interface ResolvedLocation {
 export interface FoodClassification {
   status: FoodStatus;
   types: FoodType[];
+  items: string[];
+  cuisine_tags: string[];
+  dietary_tags: string[];
   confidence: number;
   evidence: string | null;
 }

@@ -5,11 +5,18 @@ import Link from "next/link";
 import type { Event, Todo } from "@/lib/types";
 import { loadTodos, saveTodos } from "@/lib/storage/local-state";
 import { relativeDeadline } from "@/lib/timezone";
+import { demoNow } from "@/lib/demo-clock";
 import { BottomNav } from "@/components/ui/BottomNav";
 import { EmptyState } from "@/components/ui/States";
 import { StatusBar } from "@/components/ui/PressStart";
 
-export function TodosExperience() {
+export function TodosExperience({
+  variant = "page",
+  onClose,
+}: {
+  variant?: "page" | "overlay";
+  onClose?: () => void;
+}) {
   const [todos, setTodos] = useState<Todo[]>(loadTodos);
   const [events, setEvents] = useState<Record<string, Event>>({});
 
@@ -41,12 +48,26 @@ export function TodosExperience() {
     saveTodos(next);
   }
 
+  const overlay = variant === "overlay";
+
   return (
-    <div className="min-h-dvh bg-canvas pb-28">
+    <div className={overlay ? "pb-2" : "min-h-dvh bg-canvas pb-28"}>
       <main className="mx-auto max-w-lg px-4 pt-[max(14px,env(safe-area-inset-top))]">
-        <div className="pixel-panel bg-card p-4">
+        <div className="pixel-panel bg-card/95 p-4">
           <StatusBar right="QUEST" />
-          <h1 className="hud mt-3 text-[13px] leading-6">RSVP QUESTS</h1>
+          <div className="mt-3 flex items-start justify-between gap-3">
+            <h1 className="hud text-[13px] leading-6">RSVP QUESTS</h1>
+            {onClose && (
+              <button
+                type="button"
+                className="pixel-chip min-h-10 shrink-0 px-3 text-sm"
+                onClick={onClose}
+                aria-label="Close quests"
+              >
+                CLOSE
+              </button>
+            )}
+          </div>
           <p className="mt-2 text-sm font-bold text-muted">
             Registration stays on the source site. ScottyBites only reminds you.
           </p>
@@ -61,6 +82,10 @@ export function TodosExperience() {
           )}
           {sorted.map((todo) => {
             const event = events[todo.event_id];
+            const overdue =
+              todo.status === "OPEN" &&
+              todo.deadline &&
+              new Date(todo.deadline).getTime() < demoNow().getTime();
             const muted = todo.status !== "OPEN";
             return (
               <article
@@ -68,7 +93,7 @@ export function TodosExperience() {
                 className={`pixel-panel bg-card p-4 ${muted ? "opacity-60" : ""}`}
               >
                 <p className="hud text-[8px] text-tartan">
-                  {todo.type}
+                  {overdue ? "OVERDUE" : todo.type}
                   {todo.deadline ? ` · ${relativeDeadline(todo.deadline)}` : ""}
                 </p>
                 <h2 className="mt-1 text-base font-bold">{todo.title}</h2>
@@ -84,12 +109,22 @@ export function TodosExperience() {
                       OPEN FORM
                     </a>
                   )}
-                  <Link
-                    href="/"
-                    className="pixel-btn min-h-10 bg-white px-3 text-sm leading-10"
-                  >
-                    MAP
-                  </Link>
+                  {onClose ? (
+                    <button
+                      type="button"
+                      onClick={onClose}
+                      className="pixel-btn min-h-10 bg-white px-3 text-sm"
+                    >
+                      MAP
+                    </button>
+                  ) : (
+                    <Link
+                      href="/"
+                      className="pixel-btn min-h-10 bg-white px-3 text-sm leading-10"
+                    >
+                      MAP
+                    </Link>
+                  )}
                   <button
                     type="button"
                     onClick={() => update(todo.id, "DONE")}
@@ -110,7 +145,7 @@ export function TodosExperience() {
           })}
         </div>
       </main>
-      <BottomNav current="/todos" />
+      {!overlay && <BottomNav current="/todos" />}
     </div>
   );
 }

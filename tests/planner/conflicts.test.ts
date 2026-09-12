@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { withEventDefaults } from "@/lib/personalization/event-fields";
 import type { Event } from "@/lib/types";
 import { zonedWallTimeToIso } from "@/lib/timezone";
 import { canAttend, eventsOverlap } from "@/lib/planner/conflicts";
@@ -7,38 +8,15 @@ import { buildItinerary } from "@/lib/planner/build-itinerary";
 import { scoreEvent } from "@/lib/planner/score-event";
 
 function event(partial: Partial<Event> & Pick<Event, "id" | "title" | "start_time">): Event {
-  return {
-    source_id: "test",
-    source_external_id: null,
-    description: "",
-    organizer: "Test",
-    end_time: null,
-    timezone: "America/New_York",
-    source_url: null,
-    source_type: "manual",
-    venue_raw: null,
+  return withEventDefaults({
     building_id: "ghc",
-    room: null,
-    floor: null,
-    location_confidence: 1,
     food_status: "EXPLICIT",
     food_types: ["lunch"],
     food_confidence: 0.98,
     food_evidence: "Lunch will be provided.",
-    registration_required: false,
-    registration_url: null,
-    registration_deadline: null,
-    eligibility: null,
-    capacity_notes: null,
-    raw_content_hash: null,
-    extraction_version: "test",
-    provenance_note: "test",
-    fingerprint: partial.id,
-    last_checked_at: new Date().toISOString(),
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
+    location_confidence: 1,
     ...partial,
-  };
+  });
 }
 
 const lunch = event({

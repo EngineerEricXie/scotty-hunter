@@ -11,7 +11,7 @@ export default function ErrorView({
       <div className="pixel-panel bg-card p-5">
         <p className="hud text-[12px] leading-6">SNAG!</p>
         <p className="mt-2 text-sm font-bold text-muted">
-          The pixel map still works from demo data after a refresh.
+          The campus map still works from demo data after a refresh.
         </p>
         <button
           type="button"

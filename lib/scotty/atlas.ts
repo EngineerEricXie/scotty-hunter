@@ -98,6 +98,14 @@ export const ATLAS_SPECIES: AtlasSpecies[] = [
     keywords: ["hackcmu", "rangos", "sponsor expo", "dinner"],
     pixels: "🏆",
   },
+  {
+    id: "hidden",
+    name: "Secret Slice",
+    blurb: "Unlocked only after a table photo reveals the hidden menu.",
+    rarity: "legendary",
+    keywords: ["vegetarian pizza", "hidden menu", "secret slice", "vegetable dumplings", "vegetarian wrap"],
+    pixels: "🔓",
+  },
 ];
 
 export const ATLAS_BY_ID: Record<string, AtlasSpecies> = Object.fromEntries(

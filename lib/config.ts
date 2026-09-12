@@ -25,11 +25,18 @@ export const APP_CONFIG = {
   maxUploadBytes: 4 * 1024 * 1024,
 } as const;
 
+function readServer(name: string, fallback = ""): string {
+  const value = process.env[name];
+  return value && value.length > 0 ? value : fallback;
+}
+
 export const SERVER_CONFIG = {
-  extractionProvider: process.env.EXTRACTION_PROVIDER ?? "heuristic",
-  openaiApiKey: process.env.OPENAI_API_KEY ?? "",
-  anthropicApiKey: process.env.ANTHROPIC_API_KEY ?? "",
-  geminiApiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY ?? "",
+  extractionProvider: readServer("EXTRACTION_PROVIDER", "heuristic"),
+  openaiApiKey: readServer("OPENAI_API_KEY"),
+  openaiBaseUrl: readServer("OPENAI_BASE_URL", "https://api.openai.com/v1"),
+  openaiModel: readServer("OPENAI_MODEL", "gpt-4.1-mini"),
+  anthropicApiKey: readServer("ANTHROPIC_API_KEY"),
+  geminiApiKey: readServer("GOOGLE_GENERATIVE_AI_API_KEY"),
   supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL ?? "",
   supabaseAnonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "",
   supabaseServiceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY ?? "",
@@ -62,7 +69,7 @@ export function hasGoogleCalendarCredentials(): boolean {
 export const CMU_MAP_CENTER = {
   longitude: -79.9436,
   latitude: 40.4429,
-  zoom: 16.15,
-  pitch: 48,
-  bearing: -18,
+  zoom: 16.35,
+  pitch: 0,
+  bearing: 0,
 } as const;

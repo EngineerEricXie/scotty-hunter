@@ -1,36 +1,148 @@
 # ScottyBites / CMU Free Food Agent — `task.md`
 
 > HackCMU 2026 implementation plan  
-> Goal: build a polished, map-first CMU free-food discovery and planning app that uses AI to convert messy event information into structured, actionable meal opportunities.
-
-## Implementation status (local no-key MVP)
-
-Completed without credentials: Next.js app, adapter architecture, HackCMU 2026 fixture extraction, demo seeds, MapLibre campus map, filters, planner, local To-Dos, ICS export, SQL/Supabase scaffold, tests, lint, typecheck, production build.
-
-Deferred (need a human): live Supabase project, LLM API key, Google OAuth/Calendar authorization, Vercel login/deploy, Playwright Chromium, real vision API. Scaffold + local fallback exists for each.
+> Goal: build an **agentic, personalized campus meal planner** that turns CMU’s fragmented event ecosystem into a trusted free-meal itinerary the user can act on.
 
 ---
 
+## Implementation status (existing repo)
+
+The current repository already has a working **no-key local demo**: Next.js app, adapter architecture, HackCMU 2026 fixture extraction, seeded events, campus map (pixel + MapLibre), day planner, local RSVP To-Dos, ICS export, SQL/Supabase scaffold, IFM/OpenAI-compatible LLM extractor scaffold, tests, lint, typecheck, production build.
+
+**Still missing relative to this repositioned P0** (do these next; do not rebuild the skeleton):
+
+- hard vs soft personalization in the planner
+- food item / cuisine / dietary metadata extraction
+- dietary compatibility `COMPATIBLE | INCOMPATIBLE | UNKNOWN`
+- preference matcher + explainability (`positiveReasons`, `warnings`, `rejectionReasons`)
+- weekly planner (`Plan my week`)
+- skippable onboarding + planner preference chips that actually change ranking
+- RSVP workflow treated as a first-class future-opportunity loop
+
+**Present in the repo but demoted** — do not expand during remaining hackathon time:
+
+- 3D building extrusion / camera polish
+- Scotty pet, Food Dex, points, rival leaderboard
+- mock photo check-in and local NOW GOING / leftover reports
+- indoor floor selector prototype
+
+Deferred (need a human / credentials): live Supabase project, Google OAuth, Vercel login, Playwright Chromium, real vision API.
+
 ---
 
-## 0. Project Mission
+# 0. Project Mission
 
 Build a responsive web/PWA for Carnegie Mellon University students that can:
 
 1. Continuously discover CMU events from multiple public sources.
-2. Extract structured event data from messy/unstructured HTML, PDFs, and event descriptions.
-3. Detect whether an event provides free food and preserve evidence for that decision.
-4. Show free-food opportunities on an interactive CMU campus map.
-5. Let users specify which days/meals they want to eat on campus.
-6. Generate an optimized free-food itinerary considering time, distance, registration, and confidence.
-7. Detect RSVP/registration deadlines and turn them into actionable To-Do items.
-8. Allow selected events to be added to Google Calendar.
-9. Later support food-photo recognition, check-ins, points, and live “food remaining” reports.
-10. Present the product with a polished, soft, Apple Maps / Google Maps-inspired interface.
+2. Extract **grounded** structured event data from messy HTML, PDFs, and descriptions.
+3. Detect free food **and** preserve evidence, confidence, food items, cuisine tags, and dietary tags when the source supports them.
+4. Normalize time, CMU buildings, and duplicates.
+5. Capture **hard constraints** and **soft preferences** for a real person.
+6. Filter, score, and optimize a **personalized free-meal itinerary** for a day or week.
+7. Explain why each event was selected, and surface uncertainty instead of faking certainty.
+8. Turn future RSVP deadlines into actionable To-Dos.
+9. Visualize the plan on a polished CMU map and optionally export to calendar.
+10. Stay demo-reliable without private API keys.
+
+The product is **not** primarily a free-food finder, a map, an LLM wrapper, or a free-food alert app.
+
+It is a system that continuously discovers **future** opportunities and helps the user structure their schedule around them.
 
 ### One-sentence pitch
 
-> **ScottyBites is an AI agent that continuously finds free food across CMU, understands messy event pages, and builds the best free-meal schedule around your time and location.**
+> **ScottyBites turns CMU’s fragmented event ecosystem into a personalized free-meal plan.**
+
+### Demo-oriented framing
+
+> **An AI agent that finds tomorrow’s free food today — and plans your campus schedule around it.**
+
+### Central workflow
+
+```text
+DISCOVER
+  → EXTRACT
+  → VERIFY
+  → PERSONALIZE
+  → OPTIMIZE
+  → RSVP
+  → ACT
+```
+
+Every major feature must strengthen:
+
+```text
+DISCOVER → UNDERSTAND → PERSONALIZE → OPTIMIZE → ACT
+```
+
+---
+
+# 0.1 Competitive positioning
+
+Existing campus free-food products already cover overlapping combinations of:
+
+- free-food maps
+- community-reported leftovers
+- notifications / alerts
+- 3D campus maps
+- photo uploads
+- availability reports
+- dietary filters
+
+Do not compete on “another map with pins.”
+
+**Differentiation**
+
+```text
+PROACTIVE
++ AUTOMATED
++ PERSONALIZED
++ OPTIMIZED
++ ACTIONABLE
+```
+
+Strategic quadrant:
+
+|  | Manual / community data | Automated multi-source ingestion |
+| --- | --- | --- |
+| Reactive discovery (“what’s out right now”) | crowded | commodity alerts |
+| **Proactive future planning** | calendar homework | **ScottyBites** |
+
+Target:
+
+**proactive future planning + automated ingestion.**
+
+The hero question is not “Where is free food?”
+
+It is:
+
+> Given who I am, where I will be, what I eat, and what I am willing to do, what is the best free-food plan for my day or week?
+
+---
+
+# 0.2 Five core product pillars
+
+Reorganize all work around these pillars. The map is an important **interaction surface**, not the core technical novelty. Gamification and advanced 3D visualization are stretch.
+
+## 1. Agentic event discovery
+
+Multi-source registry, fetch, readable text, incremental crawl, provenance. Discover **future** events, not only “happening now.”
+
+## 2. Grounded food + RSVP extraction
+
+Structured extraction with Zod validation. Food status, items, cuisine, dietary tags, evidence, confidence, registration requirement, deadline, URL. Never invent unsupported facts.
+
+## 3. User personalization
+
+Hard constraints vs soft preferences. Onboarding is lightweight. Preferences feed filtering, ranking, optimization, and explanations — they are not an isolated profile screen.
+
+## 4. Spatiotemporal meal optimization
+
+Phase 1 hard filter → Phase 2 personalized scoring → Phase 3 itinerary construction for a day and a simplified week.
+
+## 5. RSVP / action workflow
+
+Future opportunity → deadline → Todo → reminder / calendar → attend. Prefer events the user can still realistically register for.
 
 ---
 
@@ -43,38 +155,45 @@ Relevant facts from the organizer deck:
 - HackCMU is a **24-hour hackathon**.
 - Teams are up to 4 people.
 - “Food” is one of the official tracks.
-- Judging emphasizes:
-  - Originality
-  - Technical Difficulty
-  - Demo Quality
-  - Usefulness
-  - Track Relevance
-- The judging slide explicitly distinguishes real technical work from a simple “ChatGPT wrapper.”
+- Judging emphasizes Originality, Technical Difficulty, Demo Quality, Usefulness, Track Relevance.
+- The judging slide distinguishes real technical work from a simple “ChatGPT wrapper.”
 - Demo/presentation time is approximately **3 minutes**.
-- The HackCMU schedule itself includes food events such as dinner, lunch, and midnight food, making the PDF a useful test fixture for unstructured event extraction.
+- The HackCMU schedule itself includes food events, making the PDF a useful unstructured-extraction fixture.
 
 ### Product implication
 
 Do **not** attempt to finish every stretch feature.
 
-The winning MVP is the following vertical slice:
+Do **not** spend remaining time on 3D campus spectacle, indoor GIS, or gamification.
+
+The winning MVP is this vertical slice:
 
 ```text
-SOURCE
-  ↓
-CRAWLER / DOCUMENT INGESTION
-  ↓
-AI STRUCTURED EXTRACTION
-  ↓
-FREE-FOOD CLASSIFICATION
-  ↓
-DATABASE
-  ↓
-CAMPUS MAP
-  ↓
-PERSONALIZED PLANNER
-  ↓
-RSVP TODO / CALENDAR
+MULTIPLE EVENT SOURCES
+        ↓
+RAW HTML / PDF / TEXT
+        ↓
+AGENT / STRUCTURED EXTRACTION
+        ↓
+FOOD + RSVP + DIETARY METADATA
+        ↓
+NORMALIZATION
+        ↓
+DATABASE / LOCAL REPOSITORY
+        ↓
+USER PREFERENCES
+        ↓
+HARD CONSTRAINT FILTER
+        ↓
+PERSONALIZED EVENT SCORING
+        ↓
+SPATIOTEMPORAL OPTIMIZATION
+        ↓
+PERSONALIZED MEAL PLAN
+        ↓
+RSVP TODO
+        ↓
+MAP / CALENDAR ACTION
 ```
 
 Everything else is secondary.
@@ -85,50 +204,196 @@ Everything else is secondary.
 
 Use these labels consistently:
 
-- **P0** — Required for a convincing demo.
-- **P1** — High-value stretch goal after the vertical slice works.
-- **P2** — Nice-to-have only if the app is already stable and polished.
+- **P0** — Required for a convincing demo of the **personalized planner**.
+- **P1** — High-value stretch after the vertical slice works.
+- **P2** — Nice-to-have only if the planner is already stable and explainable.
 - **POST** — Post-hackathon product work.
 
 ### Scope rule
 
-Before starting any P1/P2 task:
+Before starting any P1/P2 task, the **repositioned** P0 must work:
 
-- [x] All P0 data flow works end-to-end.
 - [x] App starts locally with one command.
 - [x] Seeded demo works without external network dependencies.
-- [x] At least one real source has been ingested. <!-- fixture + public adapters; live pages are best-effort and not required for demo -->
-- [x] Planner returns a valid itinerary.
 - [x] Map displays event markers.
+- [x] Basic day planner returns a non-overlapping itinerary.
 - [x] No critical runtime errors.
+- [x] Personalization (hard + soft) changes candidate eligibility and ranking.
+- [x] Planner explains why each selected event was chosen.
+- [x] Uncertainty is visible (dietary UNKNOWN, likely food, unclear RSVP).
+- [x] Future RSVP deadline becomes an actionable To-Do from the plan.
+- [x] Weekly plan (even simplified deterministic) runs from campus days + meals.
+
+---
+
+# 2.1 Implementation priority order
+
+Work in this order. Do not skip ahead to P2 map/gamification.
+
+### P0
+
+1. Project foundation (exists)
+2. Normalized event data model (extend, do not replace)
+3. User personalization model
+4. CMU building/location model (exists; keep)
+5. Deterministic fixture repository (exists; enrich dietary/RSVP examples)
+6. Source registry (exists)
+7. Ingestion (exists)
+8. Extraction architecture (exists; extend metadata)
+9. Food metadata extraction (`food_items`, `cuisine_tags`, `dietary_tags`)
+10. Food evidence / confidence (exists; keep grounded)
+11. RSVP extraction (exists; deepen deadline/status)
+12. Time normalization (exists)
+13. Location normalization (exists)
+14. Deduplication (exists)
+15. Dietary compatibility logic
+16. Preference matching
+17. Walking calculation (exists)
+18. Hard constraint engine
+19. Personalized scoring
+20. Itinerary optimizer (extend current greedy planner)
+21. Planner explainability
+22. RSVP Todo workflow (upgrade from list → future-opportunity loop)
+23. Weekly planner (simplified deterministic is acceptable)
+24. Map UI as visualization of the plan (keep simple)
+25. Planner UI with reasons, warnings, chips
+26. Preference onboarding (skippable)
+27. Filters (map + planner chips)
+28. Tests (especially personalization)
+29. Demo reliability / fixture fallback
+30. UI polish of the planner narrative
+
+### P1
+
+- additional real public CMU sources
+- Google Calendar OAuth
+- ICS (already scaffolded — keep, do not rebuild)
+- more advanced walking routing
+- richer weekly optimization
+- richer dietary extraction
+- notification architecture
+- subtle 3D map enhancements only if planner P0 is done
+
+### P2
+
+- photo recognition
+- community food remaining
+- points / leaderboard / badges
+- detailed 3D map
+- indoor floors
+- adaptive recommendation learning
+
+### POST
+
+- native mobile apps
+- production-scale crawling
+- full campus GIS
+- multi-university expansion
+- autonomous registration (only where appropriate and allowed)
+- advanced recommendation learning
 
 ---
 
 # 3. Definition of Done for HackCMU
 
-The project is demo-ready when a judge can see this exact flow:
+The project is demo-ready when a judge can see this flow:
 
-1. Open ScottyBites.
-2. See CMU on an interactive map.
-3. Change the day/date.
-4. See multiple food opportunities.
-5. Open an event and see:
-   - title
-   - time
-   - building / room
-   - food type
-   - confidence
-   - evidence quote
-   - RSVP requirement
-6. Enter preferences:
-   - campus days
-   - lunch/dinner
-   - max walking time
-7. Click **Plan My Free Food Day**.
-8. Receive a realistic non-overlapping itinerary.
-9. See a registration deadline become a To-Do item.
-10. Optionally add a selected event/day to Google Calendar.
-11. Explain that the data came from unstructured CMU sources rather than hand-entered records.
+1. Open ScottyBites (map is available immediately; onboarding can be skipped).
+2. Optionally complete a 5-step lightweight preference flow, **or** set chips on Plan.
+3. Show a messy source / fixture turning into structured food + RSVP + evidence.
+4. Set:
+
+```text
+Campus: Monday, Wednesday, Friday
+Meals: lunch + dinner
+Vegetarian
+Likes pizza + Asian food
+Max walk 12 minutes
+Willing to RSVP
+```
+
+5. Click **Plan my week** (or Plan today if week is the simplified fallback).
+6. Receive an actionable itinerary, not a search-result list.
+7. Each selected event shows meal, food, walk, confidence, and **why selected**.
+8. Warnings appear when dietary details are incomplete or food is only likely.
+9. A future registration deadline becomes **Add RSVP To-Do**.
+10. Map shows the chosen events spatially.
+11. Explain that data came from unstructured sources, not a hand-typed spreadsheet.
+
+### Hero itinerary shape
+
+```text
+WEDNESDAY
+
+12:00–1:00 PM
+Machine Learning Seminar
+Tepper 1403
+🍕 Vegetarian pizza available
+8 min walk
+98% food confidence
+
+Why selected:
+- matches lunch
+- vegetarian-compatible
+- preferred food
+- short walk
+- confirmed food
+
+5:30–7:00 PM
+Startup Networking Night
+CUC
+🥡 Asian catering
+6 min walk
+92% food confidence
+
+Action required:
+RSVP by Tuesday 11:59 PM
+
+[Add RSVP Todo]
+```
+
+---
+
+# 3.1 Success metrics for MVP
+
+Measurable. If a metric fails, the corresponding P0 task is not done.
+
+### Extraction
+
+- HackCMU fixture processes into normalized events.
+- Captures title / time / location when the source supports them.
+- Preserves food evidence for every non-`NONE` food claim.
+- Captures RSVP required / URL / deadline when present.
+- “Pizza will be provided.” → `food_items` includes pizza; vegetarian compatibility stays **UNKNOWN** unless vegetarian pizza is explicit.
+
+### Personalization
+
+- Changing vegetarian preference changes eligibility or ranking.
+- Changing favorite foods changes ranking when other factors are equal.
+- Changing max walking time changes the itinerary.
+- `minimum_food_confidence = explicit only` filters LIKELY events.
+
+### Planner
+
+- Never knowingly selects overlapping events.
+- Respects walking constraints (hard max).
+- Respects expired registration deadlines unless the user explicitly allows them.
+- Deterministic output from deterministic inputs (no LLM in the optimizer).
+
+### Explainability
+
+- Every selected event has at least one `positiveReasons` entry.
+- Uncertainty warnings appear when dietary compatibility is UNKNOWN or food is not EXPLICIT.
+
+### RSVP
+
+- A future event deadline generates an actionable To-Do.
+- Planner prefers events the user can still realistically register for.
+
+### Demo
+
+- Primary flow works offline / without private API keys (`NEXT_PUBLIC_DEMO_MODE=true`).
+- LLM extraction may be shown as a stretch if `EXTRACTION_PROVIDER=llm` is configured; judging must not depend on it.
 
 ---
 
@@ -139,137 +404,129 @@ The project is demo-ready when a judge can see this exact flow:
 - [x] Next.js
 - [x] TypeScript
 - [x] Tailwind CSS
-- [x] MapLibre GL JS
+- [x] MapLibre GL JS (GEO mode) + pixel campus map (current default visualization)
 - [ ] Framer Motion only where it improves polish <!-- CSS transitions used instead -->
 - [x] Responsive PWA layout
 - [ ] Optional component primitives: shadcn/ui
 
+Keep the UI map-first, but the **narrative** is planner-first. Prefer clear chips, reasons, and timelines over decorative 3D.
+
 ## Backend
 
-Preferred hackathon choice:
-
 - [x] Next.js route handlers / server actions
-- [ ] Supabase
-  - Postgres
-  - Auth
-  - Storage
-  <!-- Scaffolded and mock/local fallback implemented. Real provider activation requires manual credentials and is intentionally deferred. -->
+- [ ] Supabase Postgres / Auth / Storage
+  <!-- Scaffolded. LocalFixtureEventRepository is the demo default. -->
 - [ ] Optional PostGIS only if spatial queries become useful
 
 ## Data ingestion
 
-- [x] `fetch` for normal public HTML
+- [x] `fetch` for public HTML
 - [x] Cheerio for HTML parsing
-- [ ] Playwright only for JavaScript-heavy public pages <!-- adapter scaffolded; runtime not installed because the demo does not need it -->
-- [ ] PDF text extraction / multimodal extraction where necessary <!-- fixture text used; original PDF was not in the repo -->
-- [ ] LLM structured output <!-- LLMEventExtractor scaffolded. Requires API key. Default is heuristic. -->
+- [ ] Playwright for JS-heavy public pages <!-- scaffolded; P1, not required for demo -->
+- [ ] PDF text extraction <!-- fixture text used; original PDF not in repo -->
+- [x] LLM structured output scaffold (`LLMEventExtractor`, OpenAI-compatible / IFM via `OPENAI_BASE_URL` + `OPENAI_MODEL`)
 - [x] Zod validation
+- Default extractor remains **heuristic** so demo never requires a key
 
 ## Mapping
 
 - [x] MapLibre GL
-- [x] OpenStreetMap-compatible base data / tiles
-- [x] CMU building GeoJSON
-- [x] Optional 3D building extrusion
+- [x] OpenStreetMap-compatible tiles
+- [x] CMU building coordinates / GeoJSON
+- [x] Optional 3D extrusion — **P2 / do not expand**
 
 ## AI
 
 Use AI only where semantic interpretation is necessary:
 
 - event extraction
-- free-food classification
-- RSVP/deadline extraction
-- optional food-photo recognition
+- food / cuisine / dietary metadata extraction
+- RSVP / deadline extraction
+- optional food-photo recognition (**P2**)
 
-Do **not** use an LLM for deterministic tasks such as:
+Do **not** use an LLM for deterministic tasks:
 
 - date filtering after normalization
 - distance formulas
 - database CRUD
 - schedule conflict detection
-- simple scoring
+- scoring / optimization
+- preference matching
 - deduplication by exact URL/hash
+- explainability string assembly from structured reason codes
+
+Personalization and planning must remain **deterministic and explainable**.
 
 ---
 
 # 5. Repository Structure
 
-Create approximately this structure:
+Existing layout (keep). Add personalization modules rather than a new app.
 
 ```text
-scotty-bites/
+scotty-hunter/
 ├── app/
-│   ├── page.tsx
+│   ├── page.tsx                  # map visualization
 │   ├── map/
-│   ├── plan/
-│   ├── todos/
-│   ├── profile/
-│   ├── event/
-│   │   └── [id]/
+│   ├── plan/                     # hero: day + week planner
+│   ├── todos/                    # RSVP action queue
+│   ├── profile/                  # advanced prefs; not the only entry
+│   ├── scotty/                   # P2 gamification; do not expand
+│   ├── event/[id]/
 │   └── api/
 │       ├── events/
-│       ├── plan/
+│       ├── plan/                 # accept UserConstraints + UserPreferences
 │       ├── crawl/
-│       └── calendar/
+│       ├── calendar/
+│       └── sources/
 │
 ├── components/
-│   ├── map/
-│   │   ├── CampusMap.tsx
-│   │   ├── FoodMarker.tsx
-│   │   ├── BuildingLayer.tsx
-│   │   └── EventBottomSheet.tsx
+│   ├── map/                      # visualization only
 │   ├── events/
-│   │   ├── EventCard.tsx
-│   │   ├── FoodConfidenceBadge.tsx
-│   │   └── RegistrationBadge.tsx
 │   ├── planner/
 │   │   ├── PlannerForm.tsx
-│   │   ├── MealItinerary.tsx
+│   │   ├── PreferenceChips.tsx   # NEW: quick personalization
+│   │   ├── MealItinerary.tsx     # must show reasons + warnings
+│   │   ├── WeekItinerary.tsx     # NEW
 │   │   └── RouteSummary.tsx
-│   └── ui/
+│   ├── onboarding/               # NEW: skippable 5-step
+│   └── todos/
 │
 ├── lib/
 │   ├── crawler/
-│   │   ├── source-registry.ts
-│   │   ├── fetch-source.ts
-│   │   ├── extract-readable-text.ts
-│   │   └── crawl-source.ts
 │   ├── extraction/
-│   │   ├── event-schema.ts
+│   │   ├── event-schema.ts       # extend food metadata
 │   │   ├── extract-events.ts
 │   │   ├── classify-food.ts
+│   │   ├── classify-dietary.ts   # NEW
 │   │   ├── normalize-location.ts
 │   │   └── normalize-time.ts
+│   ├── personalization/          # NEW
+│   │   ├── types.ts
+│   │   ├── dietary-compatibility.ts
+│   │   ├── hard-constraints.ts
+│   │   └── match-event.ts
 │   ├── planner/
-│   │   ├── score-event.ts
+│   │   ├── score-event.ts        # personalized weights
 │   │   ├── walking-time.ts
 │   │   ├── conflicts.ts
-│   │   └── build-itinerary.ts
+│   │   ├── explain.ts            # NEW reason codes → copy
+│   │   ├── build-itinerary.ts    # day
+│   │   └── build-week.ts         # NEW simplified week
 │   ├── dedup/
-│   │   └── deduplicate-events.ts
 │   ├── maps/
-│   │   ├── buildings.ts
-│   │   └── geo.ts
 │   ├── calendar/
-│   └── db/
+│   ├── db/
+│   └── scotty/                   # P2; do not expand
 │
-├── data/
-│   ├── fixtures/
-│   │   └── hackcmu-2026/
-│   └── geo/
-│       └── cmu-buildings.geojson
-│
-├── supabase/
-│   └── migrations/
-│
+├── data/fixtures/hackcmu-2026/
+├── data/geo/
+├── supabase/migrations/
 ├── tests/
 │   ├── extraction/
+│   ├── personalization/          # NEW
 │   ├── planner/
 │   └── dedup/
-│
-├── public/
-│   └── icons/
-│
 ├── task.md
 ├── README.md
 └── .env.example
@@ -280,8 +537,6 @@ scotty-bites/
 # 6. Core Data Model
 
 ## 6.1 `sources`
-
-Fields:
 
 ```text
 id
@@ -298,7 +553,7 @@ created_at
 updated_at
 ```
 
-Suggested enums:
+Enums:
 
 ```text
 source_type:
@@ -316,13 +571,12 @@ parser_type:
 - pdf
 - ics
 - rss
+- fixture
 ```
 
 ---
 
 ## 6.2 `buildings`
-
-Fields:
 
 ```text
 id
@@ -338,27 +592,13 @@ created_at
 updated_at
 ```
 
-Examples:
+Seed at least: Gates Hillman Center, Tepper Quad, Cohon University Center, Wean Hall, Doherty Hall, Hunt Library, Newell-Simon Hall, Hamburg Hall, Posner Hall.
 
-```text
-Gates Hillman Center
-Tepper Quad
-Cohon University Center
-Wean Hall
-Doherty Hall
-Hunt Library
-Newell-Simon Hall
-Hamburg Hall
-Posner Hall
-```
-
-Do not attempt perfect CMU building coverage before the demo.
+Do not attempt perfect CMU coverage before the demo.
 
 ---
 
 ## 6.3 `events`
-
-Required fields:
 
 ```text
 id
@@ -379,21 +619,30 @@ venue_raw
 building_id
 room
 floor
+location_confidence          # RESOLVED | PARTIAL | UNKNOWN
+location_status              # same idea as location_confidence
 
-food_status
-food_types[]
+food_status                  # EXPLICIT | LIKELY | POSSIBLE | NONE
+food_types[]                 # meal windows + coarse types
+food_items[]                 # pizza, sandwiches, tacos, salad, pastries, coffee, …
+cuisine_tags[]               # American, Chinese, Korean, Japanese, Indian, Mediterranean, Mexican, Italian, …
+dietary_tags[]               # vegetarian, vegan, halal, kosher, gluten-free, dairy-free, … only if sourced
 food_confidence
 food_evidence
 
-registration_required
+registration_required        # true | false | null
+registration_status          # NOT_REQUIRED | REQUIRED | UNKNOWN
 registration_url
 registration_deadline
 
 eligibility
 capacity_notes
+event_types[]                # talk, mixer, workshop, career, social, …
 
 raw_content_hash
 extraction_version
+provenance_note
+fingerprint
 
 last_checked_at
 created_at
@@ -409,9 +658,7 @@ POSSIBLE
 NONE
 ```
 
-### `food_types`
-
-Possible values:
+### `food_types` (meal / coarse)
 
 ```text
 breakfast
@@ -427,108 +674,261 @@ catering
 unknown
 ```
 
-### Critical requirement
-
-Every non-`NONE` classification should preserve:
+### `food_items` examples
 
 ```text
-food_confidence
-food_evidence
+pizza
+sandwiches
+tacos
+salad
+pastries
+coffee
 ```
+
+### `cuisine_tags` examples
+
+```text
+American
+Chinese
+Korean
+Japanese
+Indian
+Mediterranean
+Mexican
+Italian
+```
+
+### Critical extraction rules
+
+Every non-`NONE` food classification **must** preserve `food_confidence` and `food_evidence`.
+
+Unknown remains unknown. Do **not** infer dietary compatibility from silence.
 
 Example:
 
 ```text
-food_confidence = 0.98
-food_evidence = "Lunch will be provided."
+Source: "Pizza will be provided."
+
+food_status = EXPLICIT
+food_items = ["pizza"]
+vegetarian compatibility = UNKNOWN
 ```
+
+Only mark vegetarian COMPATIBLE if the source explicitly supports it (e.g. “vegetarian pizza”, “vegetarian options available”).
 
 Do not silently claim free food without evidence.
 
 ---
 
-## 6.4 `user_preferences`
+## 6.4 Uncertainty states (first-class)
 
-Fields:
+These are product differentiators. UI and planner must speak them.
+
+### Food
 
 ```text
-id
-user_id
-preferred_days[]
-wants_breakfast
-wants_lunch
-wants_dinner
-max_walking_minutes
-home_building_id
-usual_building_ids[]
-dietary_preferences[]
-created_at
-updated_at
+EXPLICIT | LIKELY | POSSIBLE | NONE
+```
+
+### Dietary compatibility (per user constraint, computed at match time)
+
+```text
+COMPATIBLE
+INCOMPATIBLE
+UNKNOWN
+```
+
+Do **not** assume an event satisfies a dietary constraint merely because no conflicting information is present.
+
+### Location
+
+```text
+RESOLVED
+PARTIAL
+UNKNOWN
+```
+
+### Registration
+
+```text
+NOT_REQUIRED
+REQUIRED
+UNKNOWN
+```
+
+Planner may **penalize** uncertainty. It must not eliminate an event solely for UNKNOWN unless a hard constraint says so (e.g. `allow_possible_food = false` combined with POSSIBLE food).
+
+UI copy examples:
+
+```text
+Vegetarian options not confirmed
+Food is likely, but not explicitly guaranteed
+RSVP requirement unclear
 ```
 
 ---
 
-## 6.5 `todos`
+## 6.5 User personalization model
 
-Fields:
+Personalization is **P0**. It is not an optional profile screen. It must change filtering, ranking, optimization, and recommendations.
+
+Internally, one `user_preferences` record is enough for MVP. Separate **hard** vs **soft** in code (`UserConstraints` vs `UserPreferences`) even if stored together.
+
+```text
+id
+user_id                    # local anonymous id is fine for demo
+
+# HARD-ish schedule / travel
+campus_days[]              # e.g. monday, wednesday, friday
+desired_meals[]            # breakfast, lunch, dinner, snacks
+home_building_id
+usual_building_ids[]
+max_walking_minutes        # HARD cap
+ideal_walking_minutes      # SOFT target
+
+# HARD dietary constraints
+dietary_constraints[]      # vegetarian, vegan, halal, kosher, gluten-free, dairy-free, nut-free, custom avoidances
+
+# SOFT food taste
+dietary_preferences[]
+favorite_foods[]
+disliked_foods[]
+preferred_cuisines[]
+
+preferred_meal_time_windows
+minimum_food_confidence    # e.g. explicit-only
+allow_likely_food
+allow_possible_food
+
+willing_to_rsvp            # yes | only_if_worth_it | no
+preferred_event_types[]
+disliked_event_types[]
+preferred_campus_zones[]
+
+created_at
+updated_at
+```
+
+Store locally (existing `lib/storage/local-state.ts` pattern) for demo. Do not require accounts.
+
+Architecture should allow adding more preference keys later without rewriting the planner.
+
+---
+
+### Hard constraints
+
+Eliminate invalid options. Never “maybe” these away in ranking.
+
+Examples:
+
+- days the user will be on campus
+- unavailable time windows / calendar busy (if provided)
+- desired meals (event outside all requested meal windows)
+- maximum walking time
+- dietary constraints with **known INCOMPATIBLE** evidence
+- registration deadline already passed (unless user allows expired)
+- event eligibility restrictions the user fails
+- temporal overlap with an already chosen event
+- insufficient travel time between consecutive events
+- `willing_to_rsvp = no` **and** `registration_status = REQUIRED` (chosen MVP semantics: hard exclude)
+- `allow_likely_food = false` / explicit-only vs LIKELY/POSSIBLE
+
+Dietary constraint values:
+
+```text
+vegetarian
+vegan
+halal
+kosher
+gluten-free
+dairy-free
+nut-free
+other user-entered avoidance
+```
+
+---
+
+### Soft preferences
+
+Affect ranking; do not automatically remove events.
+
+Examples:
+
+- favorite foods
+- disliked foods
+- cuisine preferences
+- preferred meal times
+- preferred campus areas / buildings
+- ideal walking distance (below the hard max)
+- preference for explicit food confirmation
+- willingness to attend networking / social / technical talks
+- `willing_to_rsvp = only_if_worth_it` (registration friction penalty, not exclusion)
+- event duration preference
+- preference for higher food-confidence events
+- preferred event categories
+
+Favorite food chips (onboarding / planner):
+
+```text
+pizza
+sandwiches
+Asian food
+Indian food
+Mexican food
+desserts
+coffee
+snacks
+healthy food
+```
+
+---
+
+## 6.6 `todos`
 
 ```text
 id
 user_id
 event_id
-type
+type                 # RSVP | REGISTER | REMINDER
 title
 deadline
-status
+status               # OPEN | DONE | DISMISSED | OVERDUE
 created_at
 updated_at
 ```
 
-Enums:
-
-```text
-type:
-- RSVP
-- REGISTER
-- REMINDER
-
-status:
-- OPEN
-- DONE
-- DISMISSED
-```
+Sort soonest deadline first. Surface overdue separately. Never auto-submit external RSVP forms.
 
 ---
 
-## 6.6 `meal_plans`
-
-Fields:
+## 6.7 `meal_plans`
 
 ```text
 id
 user_id
-plan_date
+plan_date            # or plan_week_start
 created_at
 ```
 
-Related item table:
+`meal_plan_items`:
 
 ```text
-meal_plan_items
-- id
-- meal_plan_id
-- event_id
-- meal_type
-- event_score
-- walking_minutes_from_previous
-- sequence_index
+id
+meal_plan_id
+event_id
+meal_type
+event_score
+walking_minutes_from_previous
+sequence_index
+positive_reasons[]
+warnings[]
 ```
 
 ---
 
-## 6.7 `checkins` — P1/P2
+## 6.8 `checkins` — P2 / POST
 
-Fields:
+Keep the schema for later. Do not block P0 on it.
 
 ```text
 id
@@ -536,18 +936,9 @@ user_id
 event_id
 photo_url
 dish_labels[]
-availability_status
+availability_status    # PLENTY | SOME | GONE | UNKNOWN
 points_awarded
 created_at
-```
-
-Availability:
-
-```text
-PLENTY
-SOME
-GONE
-UNKNOWN
 ```
 
 ---
@@ -558,15 +949,10 @@ UNKNOWN
 
 - [x] Create Next.js + TypeScript project.
 - [x] Configure Tailwind.
-- [x] Add linting.
-- [x] Add formatter.
-- [x] Add `.env.example`.
-- [x] Add `README.md`.
-- [x] Add this `task.md` to repository root.
-- [x] Configure aliases such as `@/`.
+- [x] Add linting / formatter.
+- [x] Add `.env.example`, `README.md`, this `task.md`.
+- [x] Configure `@/` aliases.
 - [x] Verify production build succeeds.
-
-### Acceptance criteria
 
 ```bash
 npm install
@@ -574,121 +960,60 @@ npm run dev
 npm run build
 ```
 
-all work without errors.
-
 ---
 
-## TASK P0-002 — Create design tokens
+## TASK P0-002 — Design tokens
 
-Define:
+- [x] background, card, text, border, radii, spacing, shadows, marker sizing, type hierarchy
 
-- [x] background
-- [x] card background
-- [x] text colors
-- [x] subtle border
-- [x] corner radii
-- [x] spacing scale
-- [x] shadows
-- [x] map marker sizing
-- [x] typography hierarchy
-
-### Visual direction
-
-Target:
+Visual direction for **planner + map** (not a game):
 
 ```text
-Apple Maps        70%
-Notion            15%
-soft/cute campus  15%
+Apple Maps        60%
+Notion            25%
+soft campus       15%
 ```
 
-Avoid:
+Avoid: overly cartoonish UI as the primary surface, cluttered dashboards, spreadsheet density.
 
-- overly cartoonish UI
-- excessive gradients
-- excessive shadows
-- cluttered dashboards
-- dense spreadsheet appearance
+Pixel/Scotty styling may remain, but **do not let it steal the demo**. The judge should remember the plan, not the pet.
 
-Use:
-
-- rounded bottom sheets
-- pill filters
-- soft cards
-- large touch targets
-- restrained iconography
-- clear hierarchy
-- map-first composition
+Use: rounded sheets, pill filters / chips, large touch targets, clear hierarchy, map-first composition **in service of the itinerary**.
 
 ---
 
-# 8. P0 — Database
+# 8. P0 — Database / local repository
 
-## TASK P0-010 — Create database schema
+## TASK P0-010 — Schema
 
-- [x] Add tables listed in Section 6.
-- [x] Add enums.
-- [x] Add indexes:
-  - start_time
-  - food_status
-  - building_id
-  - source_id
-  - registration_deadline
-- [x] Add foreign keys.
-- [x] Add timestamps.
-- [x] Create migration.
+- [x] Base tables from the original Section 6.
+- [x] Extend events with `food_items`, `cuisine_tags`, `dietary_tags`, `registration_status`, `location_status`, `event_types`.
+- [x] Extend user preferences to the personalization model in 6.5.
+- [x] Indexes on `start_time`, `food_status`, `building_id`, `source_id`, `registration_deadline`.
+- [x] SQL migration scaffold exists.
 
-<!-- Local app uses LocalFixtureEventRepository. Applying these SQL files to a live Supabase project requires creating a project and pasting credentials. -->
-
-### Acceptance criteria
-
-A fresh Supabase database can be initialized solely from repository migrations.
+Local app uses `LocalFixtureEventRepository`. Applying SQL to live Supabase still requires a human-created project.
 
 ---
 
 ## TASK P0-011 — Seed CMU buildings
 
-Seed at least:
+- [x] GHC, Tepper, CUC, Wean, Doherty, Hunt, NSH, Hamburg Hall
+- [x] aliases, lat/lng, campus / off-campus flag
 
-- [x] Gates Hillman Center
-- [x] Tepper Quad
-- [x] Cohon University Center
-- [x] Wean Hall
-- [x] Doherty Hall
-- [x] Hunt Library
-- [x] Newell-Simon Hall
-- [x] Hamburg Hall
+Normalizer must resolve `GHC`, `Tepper`, `CUC`, `NSH`, `Wean`.
 
-For each:
-
-- [x] canonical name
-- [x] common aliases
-- [x] latitude/longitude
-- [x] campus/off-campus flag
-
-### Acceptance criteria
-
-Location normalizer can resolve common abbreviations such as:
-
-```text
-GHC
-Tepper
-CUC
-NSH
-Wean
-```
-
-to a known building.
+Unknown location is allowed; never assign a random building.
 
 ---
 
 # 9. P0 — Seed / Fixture Data
 
-## TASK P0-020 — Build HackCMU 2026 fixture
+## TASK P0-020 — HackCMU 2026 fixture
 
-Use the supplied `HackCMU 2026 Opening Ceremony.pdf` as the first realistic unstructured fixture.
+Use HackCMU opening materials as unstructured fixture text (not a live PDF scrape).
 
-Create fixture records corresponding to at least:
+At least:
 
 - [x] Friday Dinner + Sponsor Expo
 - [x] Friday Midnight Cafe
@@ -697,43 +1022,43 @@ Create fixture records corresponding to at least:
 - [x] IFM Workshop
 - [x] Cursor Workshop
 
-Preserve source page references in fixture metadata if convenient.
+### Enrich for personalization demo (NEW, required)
 
-### Purpose
+Add or extend seeded events (fixture and/or `data/fixtures/demo-events.ts`) so the hero prompt is demonstrable:
 
-This fixture demonstrates:
+- [x] An EXPLICIT lunch with pizza **and** explicit vegetarian language
+- [x] An EXPLICIT dinner with Asian catering language
+- [x] A meat-only event that vegetarian hard-filters
+- [x] A pizza event with **no** dietary language (UNKNOWN vegetarian)
+- [x] A LIKELY refreshments event
+- [x] A future event whose RSVP deadline is **tomorrow** relative to demo date `2026-09-12`
+- [x] An event > 12 minutes walk from Gates for walking-cap tests
+- [x] At least one lunch and one dinner on Monday, Wednesday, and Friday of the demo week if week planning is shown (or clearly labeled “no reliable option”)
+
+Purpose:
 
 ```text
-53-page event deck
+messy source
 → semantic extraction
-→ food/time/location understanding
-→ structured database records
+→ food / dietary / RSVP / time / location
+→ personalized plan
 ```
-
-### Acceptance criteria
-
-A test can load the fixture and produce normalized event objects.
 
 ---
 
-## TASK P0-021 — Create deterministic seeded demo mode
-
-Add a mode such as:
+## TASK P0-021 — Deterministic demo mode
 
 ```text
-DEMO_MODE=true
+NEXT_PUBLIC_DEMO_MODE=true
+NEXT_PUBLIC_DEMO_DATE=2026-09-12
 ```
 
-When enabled:
-
-- [x] app has useful events even if internet crawling fails
-- [x] map has enough markers for demo
-- [x] planner has at least one lunch and one dinner option
-- [x] one event has RSVP required
-- [x] one event has a deadline
-- [x] food confidence varies across events
-
-### Reason
+- [x] useful events if crawling fails
+- [x] map markers
+- [x] lunch + dinner candidates
+- [x] RSVP + deadline examples
+- [x] varying food confidence
+- [x] demo seeds sufficient for vegetarian / pizza / walking / weekly stories
 
 Never depend on live third-party pages during judging.
 
@@ -741,100 +1066,49 @@ Never depend on live third-party pages during judging.
 
 # 10. P0 — Source Registry & Crawling
 
-## TASK P0-030 — Implement source registry
+## TASK P0-030 — Source registry
 
-Create a registry-based architecture.
+- [x] Registry-based architecture (`lib/crawler/source-registry.ts`)
 
-Example:
-
-```ts
-{
-  id: "cmu-events",
-  name: "CMU Events",
-  url: "...",
-  sourceType: "official_calendar",
-  parserType: "html",
-  enabled: true
-}
-```
-
-Do not hardwire all crawling into one function.
-
-### Acceptance criteria
-
-Adding a new source requires configuration + source-specific parsing only when necessary.
+Adding a source should need configuration + parser only when necessary.
 
 ---
 
-## TASK P0-031 — Implement generic public HTML fetcher
+## TASK P0-031 — Public HTML fetcher
 
-- [x] Fetch URL.
-- [x] Respect reasonable timeout.
-- [x] Return status.
-- [x] Normalize encoding.
-- [x] Save source URL.
-- [x] Record fetch timestamp.
-- [x] Handle failures without crashing the entire crawl.
-- [x] Add user-agent identifying the project if appropriate.
+- [x] Fetch, timeout, status, encoding, URL, timestamp
+- [x] One failed source cannot crash the crawl
+- [x] Identifying user-agent when appropriate
 
-### Do not
-
-- bypass authentication
-- bypass anti-bot protections
-- scrape private pages
-- automate protected logins during the MVP
+Do not: bypass auth, anti-bot, private pages, or protected logins.
 
 ---
 
-## TASK P0-032 — Extract readable text
+## TASK P0-032 — Readable text
 
-Given HTML:
-
-- [x] strip nav noise where possible
-- [x] remove script/style
-- [x] preserve headings
-- [x] preserve date/time text
-- [x] preserve links
-- [x] preserve RSVP URLs
-- [x] preserve food-related phrases
-- [x] preserve venue information
-
-Output:
+- [x] strip nav/script/style noise; preserve headings, times, links, RSVP URLs, food phrases, venues
 
 ```ts
-{
-  sourceUrl,
-  title,
-  text,
-  links[]
-}
+{ sourceUrl, title, text, links[] }
 ```
 
 ---
 
-## TASK P0-033 — Add Playwright fallback
+## TASK P0-033 — Playwright fallback — **P1**
 
-Only use when needed.
+- [ ] browser fetch adapter
+- [ ] wait for primary content
+- [ ] timeout + source error logging
 
-- [ ] implement a browser fetch adapter
-- [ ] wait for primary content, not arbitrary long sleeps
-- [ ] return rendered HTML/text
-- [ ] enforce timeout
-- [ ] log source errors
-
-<!-- Scaffolded in lib/crawler/playwright-fetch.ts. Playwright is not installed; demo does not need it. -->
-
-P0 requirement is only one successful dynamic source if a useful source needs it.
+Scaffold exists (`lib/crawler/playwright-fetch.ts`). Demo must not require it.
 
 ---
 
-# 11. P0 — AI Event Extraction
+# 11. P0 — Grounded Event Extraction
 
-## TASK P0-040 — Define Zod extraction schema
+## TASK P0-040 — Zod extraction schema
 
-The AI output must be validated.
-
-Example conceptual schema:
+Extend the current schema. Invalid model output is rejected or repaired; never written blindly.
 
 ```ts
 {
@@ -844,64 +1118,50 @@ Example conceptual schema:
   venueRaw: string | null,
   room: string | null,
   organizer: string | null,
+  eventTypes: string[] | null,
   food: {
     status: "EXPLICIT" | "LIKELY" | "POSSIBLE" | "NONE",
     types: string[],
+    items: string[],
+    cuisineTags: string[],
+    dietaryTags: string[],
     confidence: number,
     evidence: string | null
   },
   registration: {
-    required: boolean | null,
+    required: boolean | null,       // maps to NOT_REQUIRED | REQUIRED | UNKNOWN
     url: string | null,
     deadline: string | null
   }
 }
 ```
 
-### Acceptance criteria
-
-Invalid output is rejected or repaired; it is never written blindly to the database.
-
 ---
 
-## TASK P0-041 — Implement semantic extractor
+## TASK P0-041 — Semantic extractor
 
-Input:
+Input: source URL, page title, readable text, timezone `America/New_York`, date context.
 
-```text
-source URL
-page title
-readable text
-known timezone = America/New_York
-current/source date context
-```
-
-Output:
-
-```text
-EventExtraction[]
-```
-
-Prompt requirements:
+Output: `EventExtraction[]`.
 
 - [x] only extract events supported by source content
 - [x] never invent food
-- [x] copy a short supporting food evidence phrase
+- [x] copy a short food evidence phrase
 - [x] distinguish explicit vs likely vs possible
-- [x] return null when unknown
-- [x] detect multi-event pages
-- [x] preserve registration URL when linked
-- [x] normalize time carefully
+- [x] null when unknown
+- [x] multi-event pages
+- [x] preserve registration URL
+- [x] careful time normalization
+- [x] extract `food_items`, `cuisine_tags`, `dietary_tags` only when sourced
+- [x] never upgrade UNKNOWN dietary to COMPATIBLE
+
+Heuristic extractor remains the demo default. `LLMEventExtractor` is optional when `EXTRACTION_PROVIDER=llm` plus `OPENAI_API_KEY` / `OPENAI_BASE_URL` / `OPENAI_MODEL` (IFM K2 Horizon is OpenAI-compatible).
 
 ---
 
 ## TASK P0-042 — Free-food classifier
 
-Rules:
-
 ### `EXPLICIT`
-
-Examples:
 
 ```text
 "lunch provided"
@@ -913,8 +1173,6 @@ Examples:
 
 ### `LIKELY`
 
-Examples:
-
 ```text
 "reception following"
 "refreshments"
@@ -923,8 +1181,6 @@ Examples:
 
 ### `POSSIBLE`
 
-Weak hints only:
-
 ```text
 "networking social"
 "celebration"
@@ -932,371 +1188,372 @@ Weak hints only:
 
 ### `NONE`
 
-No evidence.
+No evidence, or explicit negation (“No food will be provided”).
 
-### Acceptance criteria
+No evidence ⇒ cannot be `EXPLICIT`.
 
-Classifier stores:
+---
 
-- status
-- confidence
-- evidence
+## TASK P0-042b — Food metadata extraction (NEW P0)
 
-No evidence means it cannot be `EXPLICIT`.
+From the same evidence span, fill:
+
+- `food_items[]`
+- `cuisine_tags[]`
+- `dietary_tags[]`
+
+If the source only says “lunch provided”, items/cuisine/dietary stay empty; food_status can still be EXPLICIT.
 
 ---
 
 ## TASK P0-043 — Time normalization
 
-Normalize all event times to:
-
-```text
-America/New_York
-```
-
-Store timezone-aware timestamp.
-
-Handle:
-
-- [x] AM/PM
-- [x] date omitted but page context provides date
-- [x] cross-midnight events
-- [x] multi-day pages
-- [x] midnight
-- [x] invalid / ambiguous dates
-
-### Important
-
-If date cannot be supported from source/context, mark extraction incomplete instead of inventing a date.
+- [x] America/New_York timezone-aware timestamps
+- [x] AM/PM, noon, midnight, cross-midnight, inherited page dates
+- If date cannot be supported, mark incomplete — do not invent
 
 ---
 
 ## TASK P0-044 — Location normalization
 
-Input examples:
+Inputs: `GHC 4307`, `Gates 4307`, `TEP 1403`, `Tepper Simmons Auditorium`, `CUC Rangos`.
 
-```text
-GHC 4307
-Gates 4307
-TEP 1403
-Tepper Simmons Auditorium
-CUC Rangos
-```
+Output: `building_id`, `room`, `venue_raw`, `location_status` / confidence.
 
-Output:
-
-```text
-building_id
-room
-venue_raw
-resolution_confidence
-```
-
-Process:
-
-1. exact alias match
-2. normalized alias match
-3. fuzzy known-building match
-4. optional AI resolver
-5. unresolved
-
-### Acceptance criteria
-
-Unknown location is allowed; do not assign a random building.
+Process: exact alias → normalized alias → fuzzy known building → optional AI resolver → unresolved.
 
 ---
 
 # 12. P0 — Deduplication
 
-## TASK P0-050 — Create event fingerprint
+## TASK P0-050 — Fingerprint
 
-Use deterministic signals:
+- [x] normalized title, start_time, organizer, building, source URL
 
-```text
-normalized title
-start_time
-organizer
-building
-source URL
-```
+## TASK P0-051 — Merge
 
-Generate a fingerprint/hash.
+Prefer explicit over inferred; keep registration URL; highest-confidence food evidence; canonical building; richer description; keep provenance.
 
----
-
-## TASK P0-051 — Merge duplicates
-
-Duplicate event may appear on:
-
-- official event site
-- department site
-- club site
-- PDF
-- company page
-
-Merge carefully.
-
-Preferred fields:
-
-- explicit source values over inferred values
-- registration URL when present
-- highest-confidence food evidence
-- canonical building resolution
-- more complete description
-
-Keep provenance.
-
-### Acceptance criteria
-
-Same event appearing twice does not create two nearby identical map markers.
+Same event must not create two identical nearby map markers.
 
 ---
 
 # 13. P0 — Event API
 
-## TASK P0-060 — Build events endpoint
+## TASK P0-060 — `GET /api/events`
 
-Support filters:
+Filters: date, start, end, food_status, meal, building.
 
-```text
-date
-start
-end
-food_status
-meal
-building
-```
+## TASK P0-061 — Event detail
 
-Example:
+Return metadata, location, food classification **including items/cuisine/dietary tags**, evidence, registration, source, confidence.
 
-```text
-GET /api/events?date=2026-09-12&food_status=EXPLICIT,LIKELY
-```
+## TASK P0-062 — `POST /api/plan` (extend)
+
+Accept date **or week**, meals, walking, dietary constraints, favorite foods, willing_to_rsvp, etc.
+
+Return itinerary **plus** per-event `PersonalizedEventScore` explainability.
+
+Do not re-run the crawler or an LLM inside `/api/plan`.
 
 ---
 
-## TASK P0-061 — Build event detail endpoint
+# 14. P0 — Campus Map (visualization)
 
-Return:
+Keep map-first UX. A **simple** attractive map is P0. Impressive 3D is not.
 
-- event metadata
-- normalized location
-- food classification
-- evidence
-- registration info
-- source link
-- confidence
+## TASK P0-070 — Base map
 
----
+- [x] CMU-centered viewport, pan, zoom, basic pitch, rotate, responsive, mobile
 
-# 14. P0 — Campus Map
+Do not request precise user location unless explicitly enabled.
 
-## TASK P0-070 — Build base map
+## TASK P0-071 — Building layer
 
-Requirements:
+- [x] display buildings, select/name
+- Sophisticated extrusion / indoor floors: **P2** — already present; do not expand
 
-- [x] CMU-centered initial viewport
-- [x] zoom
-- [x] pan
-- [x] pitch
-- [x] rotate
-- [x] responsive
-- [x] usable on mobile
+## TASK P0-072 — Food markers
 
-Do not request precise user location for MVP unless explicitly enabled.
-
----
-
-## TASK P0-071 — Add CMU building layer
-
-Use GeoJSON building footprints where available.
-
-- [x] display campus buildings
-- [x] hover/select state
-- [x] building name on selection
-- [x] optional subtle 3D extrusion
-
-### P0 floor requirement
-
-None.
-
-Indoor floors are P2.
-
----
-
-## TASK P0-072 — Add food markers
-
-Marker should communicate:
-
-- meal/food type
-- approximate time
-- confidence
-
-Examples:
-
-```text
-🍕 12
-🥪 1
-🍪 4
-```
-
-Use clustering if marker density becomes high.
-
----
+Communicate meal/food type, time, confidence. Cluster if dense.
 
 ## TASK P0-073 — Event bottom sheet
 
-On marker click, show:
-
-- [x] event title
-- [x] start/end time
-- [x] building and room
-- [x] walking estimate if available
-- [x] food status
-- [x] confidence
-- [x] evidence
-- [x] RSVP requirement
-- [x] deadline
-- [x] source
-- [x] “Add to Plan”
-- [x] “Register” when URL exists
-
-Mobile:
-
-- bottom sheet
-
-Desktop:
-
-- right-side card/panel is acceptable
-
----
+- [x] title, time, building/room, walking, food status, confidence, evidence, RSVP, deadline, source, add to plan, register
+- [x] dietary compatibility vs current user prefs (COMPATIBLE / INCOMPATIBLE / UNKNOWN)
+- [x] warnings for likely food / unknown diet / unclear RSVP
 
 ## TASK P0-074 — Date and meal filters
 
-Filters:
+- [x] Today / Tomorrow / date, Breakfast / Lunch / Dinner / Snacks, explicit-only
 
-- [x] Today
-- [x] Tomorrow
-- [x] date picker
-- [x] Breakfast
-- [x] Lunch
-- [x] Dinner
-- [x] Snacks
-- [x] Explicit only toggle
+Changing a filter updates markers and lists immediately.
 
-### Acceptance criteria
+## TASK P0-075 — Plan-on-map (NEW)
 
-Changing a filter immediately updates visible map markers and list/card results.
+When an itinerary exists, highlight selected events and, if practical, walking between them. This is more important than 3D extrusion.
 
 ---
 
 # 15. P0 — Walking Time
 
-## TASK P0-080 — Implement building-to-building distance
+## TASK P0-080
 
-For MVP:
+- [x] Haversine + conservative walking speed (`APP_CONFIG.walkingMetersPerMinute`, 80 m/min)
+- Planner must use the same function
+- Optional route API is **P1**
 
-- use coordinates
-- use haversine distance
-- convert to estimated walking time using a conservative walking-speed factor
+## TASK P0-081 — Off-campus penalty
 
-Optional improvement:
-
-- walking route API
-
-### Acceptance criteria
-
-Planner uses the same walking-time function consistently.
+- [x] `off_campus = true` penalized unless user allows longer travel
 
 ---
 
-## TASK P0-081 — Add off-campus penalty
+# 16. P0 — Personalization matching (NEW CORE)
 
-Buildings/locations can be marked:
+Insert this layer between normalized events and the optimizer:
 
 ```text
-off_campus = true
+Normalized Event
+      ↓
+Preference Matcher
+      ↓
+Personalized Candidate
+      ↓
+Planner / Optimizer
 ```
 
-Planner should penalize these unless user preference allows longer travel.
+## TASK P0-200 — Preference storage + defaults
+
+- [x] Load/save the 6.5 model in local storage
+- [x] Intelligent defaults if onboarding is skipped:
+
+```text
+Today (or demo date)
+Lunch + Dinner
+15-minute walking max
+Explicit + Likely
+willing_to_rsvp = only_if_worth_it
+no dietary constraints
+```
 
 ---
 
-# 16. P0 — Personal Planner
+## TASK P0-201 — Skippable onboarding
 
-## TASK P0-090 — Planner preferences UI
+Do **not** block the map.
 
-Inputs:
+Step 1 — meals: Breakfast / Lunch / Dinner / Snacks  
+Step 2 — dietary: Vegetarian / Vegan / Halal / Kosher / Gluten-free / None  
+Step 3 — likes: Pizza / Asian / Indian / Mexican / Sandwiches / Dessert / Coffee / Healthy food  
+Step 4 — walk: 5 / 10 / 15 / 20+ min  
+Step 5 — RSVP: Yes / Only if worth it / No  
 
-- [x] days/date
-- [x] breakfast toggle
-- [x] lunch toggle
-- [x] dinner toggle
-- [x] max walking time
-- [x] starting/default building
-- [x] explicit food only vs include likely
-
-Optional:
-
-- dietary preferences
+Allow **Skip**. Persist partial answers.
 
 ---
 
-## TASK P0-091 — Implement event scoring
+## TASK P0-202 — Quick chips on planner
 
-Initial scoring function:
+Change prefs without visiting profile:
+
+```text
+Vegetarian
+≤ 12 min walk
+Lunch + Dinner
+Explicit food only
+```
+
+Chips must re-run hard filter + scoring immediately.
+
+---
+
+## TASK P0-210 — Dietary compatibility
+
+For each `dietary_constraints[]` item, compute:
+
+```text
+COMPATIBLE | INCOMPATIBLE | UNKNOWN
+```
+
+Rules:
+
+- INCOMPATIBLE only with sourced conflict (e.g. “pepperoni only”, “meat-only BBQ”).
+- COMPATIBLE only with sourced support (“vegetarian options available”).
+- Otherwise UNKNOWN — remain visible, add warning, apply uncertainty penalty. Never claim certainty.
+
+---
+
+## TASK P0-220 — `PersonalizedEventScore`
+
+```ts
+PersonalizedEventScore {
+  eventId
+  hardConstraintPassed
+  mealMatch
+  foodConfidenceScore
+  foodPreferenceScore
+  cuisinePreferenceScore
+  dietaryCompatibilityScore
+  walkingScore
+  scheduleFitScore
+  registrationScore
+  eventTypePreferenceScore
+  totalScore
+  positiveReasons[]
+  warnings[]
+  rejectionReasons[]
+}
+```
+
+Reason codes must be structured (then mapped to copy). Examples:
+
+Selected because:
+
+- confirmed lunch
+- matches vegetarian preference
+- pizza is one of your favorites
+- 7-minute walk
+- fits your schedule
+
+Warnings:
+
+- RSVP required
+- dietary details incomplete
+
+Rejection:
+
+- exceeds 12-minute walking limit
+- overlaps with another selected event
+- registration deadline passed
+- known incompatible food option
+
+---
+
+# 17. P0 — Planner (personalized)
+
+The hero feature is **personalized free-meal planning**.
+
+The primary user question:
+
+```text
+I am on campus Monday, Wednesday, and Friday.
+I want lunch and dinner.
+I am vegetarian.
+I like pizza and Asian food.
+I don't want to walk more than 12 minutes.
+I am willing to RSVP if needed.
+Find the best free-food plan for me.
+```
+
+Return an itinerary, not a list.
+
+## Three phases (explicit in code)
+
+### PHASE 1 — Hard constraint filtering
+
+Remove events that cannot realistically be attended:
+
+- wrong date / not a campus day
+- meal outside allowed windows
+- time conflict / overlap
+- walking infeasible vs `max_walking_minutes`
+- required registration deadline passed
+- user not eligible
+- known INCOMPATIBLE dietary constraint
+- `willing_to_rsvp = no` and RSVP required
+- explicit-only user vs LIKELY/POSSIBLE food
+
+### PHASE 2 — Soft scoring
+
+Rank remaining events. Initial **MVP weights** (normalize 0–1 inputs first; treat as starting point, not sacred):
 
 ```text
 score =
-    food_confidence * 30
-  + meal_match * 25
-  + schedule_fit * 20
-  - walking_minutes * 1.5
-  - registration_risk * 10
-  - off_campus_penalty * 15
+    food_confidence_score     * 25
+  + meal_match_score          * 25
+  + dietary_match_score       * 25
+  + food_preference_score     * 15
+  + cuisine_preference_score  * 10
+  + schedule_fit_score        * 20
+  + event_preference_score    * 5
+  - walking_minutes           * 1.5
+  - registration_friction     * 8
+  - off_campus                * 15
+  - uncertainty               * 10
 ```
 
-Normalize variables so the score is meaningful.
+Interpretation (keep previous mappings, extend):
 
-### Suggested interpretation
+`food_confidence`: EXPLICIT 1.0 / LIKELY 0.7 / POSSIBLE 0.35 / NONE 0  
 
-`food_confidence`
+`meal_match`: exact 1 / reasonable window 0.7 / poor 0  
+
+`dietary_match`: COMPATIBLE 1 / UNKNOWN 0.35 / INCOMPATIBLE already filtered  
+
+`food_preference`: overlap of `food_items` / types with favorites; disliked foods negative  
+
+`uncertainty`: UNKNOWN diet, POSSIBLE food, UNKNOWN registration, PARTIAL location  
+
+`registration_friction`: required + near deadline; unknown RSVP; `only_if_worth_it` medium penalty; `yes` low penalty  
+
+Do not blindly apply raw weights without normalization.
+
+### PHASE 3 — Itinerary optimization
+
+Deterministic greedy / constrained selection is sufficient.
+
+For each requested meal (and each campus day for week mode):
+
+1. hard-filter candidates
+2. score
+3. pick best
+4. enforce `canAttend(previous, next, walkingMinutes)`
+5. continue
+
+Do **not** implement CP-SAT before this works.
+
+Post-hackathon: weighted interval scheduling, orienteering with time windows, CP-SAT.
+
+---
+
+## TASK P0-090 — Planner UI
+
+- [x] date, meal toggles, max walking, start building, explicit vs likely
+- [x] dietary chips, favorite foods, willing_to_rsvp
+- [x] week vs day toggle
+- [x] reasons + warnings on each selected card
+- [x] “No reliable option” for a meal/day rather than a silent gap
+
+Timeline (keep, add why):
 
 ```text
-EXPLICIT: 1.0
-LIKELY:   0.7
-POSSIBLE: 0.35
-NONE:     0
+11:50  Leave Gates
+12:00–1:00  🍕 ML Seminar · Tepper 1403 · Confirmed lunch
+            Why: vegetarian-compatible · pizza · 8 min walk
+5:20   Walk to CUC
+5:30–7:00  🥡 Mixer · CUC · Asian catering
+            Action: RSVP by Tuesday 11:59 PM
 ```
 
-`meal_match`
+Summary: meals covered, total walking, actions required. Optional labeled $12/meal savings illustration — not factual accounting.
 
-```text
-exact requested meal: 1
-reasonable meal window: 0.7
-poor match: 0
-```
+Plan must be understandable in under 10 seconds **and** trustworthy under inspection.
 
-`registration_risk`
+---
 
-higher when:
+## TASK P0-091 — Personalized scoring
 
-- deadline has passed
-- deadline is very near
-- RSVP required but status unknown
-- limited capacity is mentioned
+Replace the old formula (`food_confidence * 30 + meal_match * 25 + schedule_fit * 20 - walking * 1.5 - registration_risk * 10 - off_campus * 15`) with Section 17 Phase 2.
+
+Keep the old signals; add dietary, food/cuisine preference, event-type preference, uncertainty.
 
 ---
 
 ## TASK P0-092 — Conflict detection
 
-A valid plan must not:
-
-- overlap events
-- violate walking time between consecutive events
-- select an event whose registration deadline has already passed, unless user explicitly allows it
-
-Function:
+- [x] overlap, walking infeasibility, expired RSVP unless allowed
+- [x] wire these as Phase 1 hard constraints with `rejectionReasons`
 
 ```ts
 canAttend(previousEvent, nextEvent, walkingMinutes): boolean
@@ -1304,409 +1561,207 @@ canAttend(previousEvent, nextEvent, walkingMinutes): boolean
 
 ---
 
-## TASK P0-093 — Build MVP itinerary optimizer
+## TASK P0-093 — Day itinerary optimizer
 
-For the hackathon, use a deterministic greedy / constrained selection approach.
-
-For each requested meal:
-
-1. filter candidate events
-2. remove invalid conflicts
-3. compute score
-4. select best candidate
-5. check travel feasibility
-6. continue
-
-### Do not implement CP-SAT before MVP works.
-
-Post-hackathon optimization can use:
-
-- weighted interval scheduling
-- orienteering with time windows
-- CP-SAT
+- [x] greedy constrained lunch/dinner
+- [x] run Phase 1 → 2 → 3 using `PersonalizedEventScore`
+- [x] attach explainability to every selected item
 
 ---
 
-## TASK P0-094 — Planner result UI
+## TASK P0-094 — Result UI
 
-Show a timeline:
+- [x] timeline + summary
+- [x] why-selected / warnings / RSVP CTA per event
+
+---
+
+## TASK P0-250 — Weekly planner (P0 architecture, simplified OK)
+
+Support **Plan my week**, not only Plan today.
+
+Input: campus days, meals, dietary, likes, max walk, willing_to_rsvp.
+
+Output example:
 
 ```text
-11:50
-Leave Gates
+MONDAY
+Lunch — Event A
+Dinner — Event B
 
-12:00–1:00
-🍕 AI Seminar
-Tepper 1403
-Confirmed lunch
+WEDNESDAY
+Lunch — Event C
+Dinner — No reliable option
 
-5:20
-Walk to CUC
+FRIDAY
+Lunch — Event D
+Dinner — Event E
 
-5:30–7:00
-🥗 Student Org Event
-CUC
-Likely dinner
+Required actions:
+TODAY     Register for Event E
+TOMORROW  Registration closes for Event D
 ```
 
-Summary:
+If full joint week optimization is too heavy, implement:
+
+- independent per-day greedy using the same matcher
+- then a pass that collects RSVP actions across the week, sorted by deadline
+
+That simplified version **is acceptable P0** if it is deterministic, explained, and demoable.
+
+Richer joint optimization is **P1**.
+
+---
+
+# 18. P0 — RSVP / action workflow
+
+This is a **core** pillar, not a side list. Value is **future** food the user would otherwise miss.
 
 ```text
-2 free meals
-14 min total walking
-2 events
-Estimated savings: optional
+Future Event Discovery
+       ↓
+Food Opportunity
+       ↓
+Registration Requirement
+       ↓
+Deadline
+       ↓
+Personalized Relevance
+       ↓
+Todo
+       ↓
+Reminder / Calendar
+       ↓
+Attend Event
 ```
 
-### Acceptance criteria
+## TASK P0-100 — Registration extraction
 
-Plan is easy to understand in under 10 seconds.
+Populate `registration_required`, `registration_url`, `registration_deadline`, `registration_status`.
 
----
+null required → UNKNOWN (penalty, not silent “no RSVP”).
 
-# 17. P0 — RSVP / To-Do
+## TASK P0-101 — Suggest To-Do from plan and event sheet
 
-## TASK P0-100 — Detect registration actions
+If required + deadline exists: `Register by Friday` + create/open To-Do.
 
-Event extraction should populate:
+Do not auto-submit external forms.
 
-```text
-registration_required
-registration_url
-registration_deadline
-```
+Planner should prefer events the user can still register for (`willing_to_rsvp` + deadline in the future).
 
----
+## TASK P0-102 — `/todos`
 
-## TASK P0-101 — Automatically suggest To-Do
+- [x] event, deadline, remaining time, link, done, dismiss, soonest first
+- [x] overdue state
+- [x] week-plan “required actions” roll-up (today / tomorrow)
 
-If:
+## TASK P0-103 — ICS (implemented; treat as P1 polish)
 
-```text
-registration_required == true
-AND registration_deadline exists
-```
-
-show:
-
-```text
-Register by Friday
-```
-
-with an action to create/open a To-Do.
-
-Do not automatically submit external forms.
+- [x] download day itinerary `.ics`
+- Google OAuth remains P1 / human credentials
 
 ---
 
-## TASK P0-102 — Build `/todos`
+# 19. P1 — Google Calendar
 
-Each item shows:
+## TASK P1-110 — OAuth
 
-- [x] event
-- [x] deadline
-- [x] days/hours remaining
-- [x] registration link
-- [x] mark done
-- [x] dismiss
+- [ ] configure, min scopes, server-side tokens, denied-permission UX  
+ICS fallback already exists.
 
-Sort:
+## TASK P1-111 / P1-112 — Add event / add day
 
-```text
-soonest deadline first
-```
+Title includes food signal; location; description with confidence, source, registration URL. Optional “leave for building” reminder.
 
 ---
 
-# 18. P1 — Google Calendar Integration
+# 20. P1 — Real source coverage
 
-## TASK P1-110 — Google OAuth
+## TASK P1-120 — CMU official events
 
-- [ ] configure Google OAuth
-- [ ] request minimum necessary permissions
-- [ ] store tokens securely
-- [ ] handle denied permission gracefully
+- [ ] listings, detail pages, provenance, incremental crawl test  
+Public adapters exist; live pages are JS-heavy / best-effort. Demo uses fixtures.
 
-<!-- Scaffolded and mock/local fallback implemented (ICS download). Real provider activation requires manual credentials and is intentionally deferred. -->
+## TASK P1-121 — Department source
 
----
+Pick 1–2 easy public calendars (SCS, RI, MLD, ECE, Tepper, Heinz).
 
-## TASK P1-111 — Add event to Google Calendar
+## TASK P1-122 — Student-org public source only
 
-Create calendar event with:
-
-```text
-Title:
-🍕 Free Lunch — ML Seminar
-
-Location:
-Gates Hillman Center 4307
-
-Description:
-Food confidence: Explicit
-Source: <URL>
-Registration: <URL>
-```
-
----
-
-## TASK P1-112 — Add full itinerary
-
-Button:
-
-```text
-Add Day to Calendar
-```
-
-Creates selected meal events.
-
-Optional separate walking reminder:
-
-```text
-11:50 — Leave for Tepper
-```
-
-Do not overcomplicate calendar sync for the hackathon.
-
----
-
-# 19. P1 — Real Source Coverage
-
-## TASK P1-120 — Add public CMU official events source
-
-- [ ] ingest public listings
-- [ ] extract event detail pages
-- [ ] store source provenance
-- [ ] test incremental crawl
-
----
-
-## TASK P1-121 — Add department event source
-
-Pick 1–2 departments with useful public events.
-
-Candidates:
-
-- SCS
-- Robotics Institute
-- Machine Learning
-- ECE
-- Tepper
-- Heinz
-
-Use whichever source structure is easiest and most reliable.
-
----
-
-## TASK P1-122 — Add student-organization source
-
-Use a public source only.
-
-If login is required:
-
-- do not bypass it
-- document it as future authenticated integration
-- use another public source for demo
-
----
+If login required: do not bypass; document as future work.
 
 ## TASK P1-123 — Incremental crawling
 
-On each crawl:
-
-- [x] fetch current content
-- [x] compute content hash
-- [x] skip unchanged page when appropriate
-- [x] update changed events
-- [x] track `last_checked_at`
-- [x] avoid creating duplicates
+- [x] hash, skip unchanged, update, `last_checked_at`, dedup
 
 ---
 
-# 20. P1 — 3D Map Polish
+# 21. P2 — Map spectacle (demoted)
 
-## TASK P1-130 — Building extrusion
+Do **not** spend critical remaining time here.
 
-If source building geometry supports it:
+## TASK P2-130 — Building extrusion
 
-- [x] add subtle extrusion
-- [x] avoid exaggerated skyscraper effect
-- [x] maintain legibility
-- [x] preserve map performance
+- [x] already implemented in GEO mode — freeze
 
----
+## TASK P2-131 — Camera transition
 
-## TASK P1-131 — Camera transition
+- [x] already implemented — freeze
 
-When event selected:
-
-- [x] smoothly focus building
-- [x] maintain usable pitch
-- [x] avoid motion sickness / excessive animation
+Indoor floors / room GIS: P2-150 / P2-151 remain non-goals for the 24-hour MVP. A polished outdoor map beat a half-working indoor GIS; a **working planner** now beats both.
 
 ---
 
-# 21. P1/P2 — Photo Check-In and Rewards
+# 22. P2 — Photo, community, gamification (demoted)
 
-## TASK P1-140 — Photo upload
+Existing Scotty / Food Dex / mock vision / NOW GOING / points / fake leaderboard: **freeze**. Do not add features.
 
-- [ ] capture/upload image
-- [ ] compress before storage
-- [ ] store securely
-- [ ] associate with event
+## TASK P2-140 — Photo upload / dish recognition
 
----
+Mock path exists. Real vision is POST. Require user confirmation before labels are final **if** revisited later.
 
-## TASK P1-141 — AI dish recognition
+## TASK P2-142 — Live leftover reports
 
-Input:
+Community remaining-food is a future extension. It must not compete with planner P0.
 
-```text
-food image
-```
+## TASK P2-143 / P2-144 — Points, leaderboard, badges
 
-Output:
-
-```text
-dish labels[]
-confidence
-```
-
-UI:
-
-```text
-AI detected:
-🍕 Pepperoni pizza
-🥗 Salad
-
-Looks right?
-[Confirm] [Edit]
-```
-
-Require user confirmation before treating labels as final.
+POST / P2. Do not build more before the planner is the demo hero.
 
 ---
 
-## TASK P1-142 — Live food availability report
-
-After check-in ask:
-
-```text
-How much food is left?
-
-🟢 Plenty
-🟡 Some
-🔴 Gone
-```
-
-Display recency:
-
-```text
-🟢 Plenty left · reported 12 min ago
-```
-
-Old reports should decay / be hidden.
-
----
-
-## TASK P2-143 — Points
-
-Example:
-
-```text
-Attend + photo     +20
-Availability report +5
-Correct dish label  +5
-```
-
-Avoid rewarding obvious spam.
-
----
-
-## TASK P2-144 — Leaderboard
-
-Optional:
-
-- weekly points
-- profile level
-- badges
-
-Do not build before core planner is polished.
-
----
-
-# 22. P2 — Indoor Floor Map
-
-## TASK P2-150 — Floor selector prototype
-
-Only support a few buildings if data is available.
-
-Example:
-
-```text
-Gates Hillman
-[8]
-[7]
-[6]
-[5]
-[4] ←
-```
-
----
-
-## TASK P2-151 — Room markers
-
-Given floor geometry:
-
-- [ ] render room outline / approximate room marker
-- [ ] place event within building/floor
-- [ ] show elevator/stair reference if available
-
-### Warning
-
-Do not manually model the entire CMU campus during the hackathon.
-
-A polished 3D outdoor map is more valuable than a half-working indoor GIS system.
-
----
-
-# 23. Error Handling Requirements
+# 23. Error Handling
 
 ## Crawling
 
-- [x] one broken source cannot stop others
-- [x] log HTTP status
-- [x] log extraction failure
-- [x] expose source health in development
+- [x] isolate source failures, log HTTP/extraction, source health in lab/dev
 
 ## Extraction
 
 - [x] malformed JSON fails validation
-- [x] missing date does not become fabricated date
-- [x] missing location remains unresolved
-- [x] weak food hint is not upgraded to explicit
+- [x] missing date not fabricated
+- [x] missing location unresolved
+- [x] weak food hint not upgraded to EXPLICIT
+- [x] empty dietary tags ≠ COMPATIBLE
 
 ## Planner
 
-- [x] empty candidates return a friendly state
-- [x] impossible lunch/dinner combination is explained
-- [x] past RSVP deadline is visible
-- [x] walking infeasibility is respected
+- [x] empty candidates friendly state
+- [x] impossible meal combo explained
+- [x] past RSVP visible; walking infeasibility respected
+- [x] UNKNOWN diet warning; “no reliable option” per meal/day
 
 ## UI
 
-- [x] loading state
-- [x] empty state
-- [x] error state
-- [x] offline/demo fallback when practical
+- [x] loading / empty / error / demo fallback
 
 ---
 
 # 24. Testing
 
-## TASK P0-160 — Unit tests: food classification
+Keep existing extraction / time / conflict / integration tests.
 
-Test phrases such as:
+## TASK P0-160 — Food classification
 
 ```text
 "Lunch will be provided."         → EXPLICIT
@@ -1717,78 +1772,59 @@ Test phrases such as:
 "No food will be provided."       → NONE
 ```
 
-Include negation tests.
+Include negation. Add: pizza without vegetarian language does **not** set vegetarian dietary_tag.
 
----
+## TASK P0-161 — Time normalization
 
-## TASK P0-161 — Unit tests: time normalization
+noon, midnight, AM/PM, cross-midnight, date from heading.
 
-Test:
+## TASK P0-162 — Planner conflicts
 
-- noon
-- midnight
-- PM/AM
-- cross-midnight
-- date inherited from page heading
+overlap, insufficient walk, back-to-back same building, expired registration, off-campus, no lunch candidate.
 
----
-
-## TASK P0-162 — Unit tests: planner conflicts
-
-Test:
-
-- overlapping events
-- insufficient walking time
-- exact back-to-back events in same building
-- expired registration
-- off-campus penalty
-- no lunch candidate
-
----
-
-## TASK P0-163 — Integration test
-
-Fixture:
+## TASK P0-163 — Integration
 
 ```text
-HackCMU sample document
-→ extraction
-→ normalization
-→ database-shaped object
-→ planner candidate
+HackCMU fixture → extraction → normalization → repository-shaped event → planner candidate
 ```
+
+Extend: matcher + explanations on the resulting plan.
+
+---
+
+## TASK P0-164 — Personalization unit tests (NEW P0)
+
+1. User vegetarian + explicitly meat-only event → **hard rejection**.
+2. User vegetarian + “pizza provided” (no diet language) → **not COMPATIBLE**; UNKNOWN warning.
+3. User likes pizza; Event A pizza vs Event B sandwiches; else equal → **A ranks higher**.
+4. Max walking 10 min; event 15 min away → **rejected**.
+5. `willing_to_rsvp = no`; Event A RSVP required vs Event B none → **A excluded** (MVP hard-filter semantics).
+6. `minimum_food_confidence = explicit only`; LIKELY event → **filtered**.
+7. Two equal-quality events → **closer ranks higher**.
+
+Also: toggling a planner chip changes the itinerary deterministically.
 
 ---
 
 # 25. Analytics / Debugging for Demo
 
-Development-only panel can display:
+Dev-only lab can show: source, extraction status, food confidence, location resolution, last crawl, **active preference snapshot**, **hard-reject counts**.
 
-```text
-Source
-Extraction status
-Food confidence
-Location resolution
-Last crawl
-```
+Do not dump internals on the consumer map.
 
-This is useful when explaining technical depth to judges.
-
-Do not expose internal complexity in the normal user interface.
+`/profile` already exposes source health and LLM connection status — keep that as judge bait for extraction, not as the product.
 
 ---
 
 # 26. Security & Privacy
 
-- [x] Never store Google OAuth secrets client-side.
-- [x] Keep service-role credentials server-side.
-- [x] Validate uploaded image MIME/type.
-- [x] Limit upload size.
-- [x] Avoid collecting unnecessary precise location.
-- [x] Do not automatically register users for external events.
-- [x] Do not scrape authenticated/private pages without explicit authorization.
-- [x] Treat event-source content as untrusted input.
-- [x] Prevent source HTML from being rendered unsanitized.
+- [x] No Google OAuth secrets client-side; service-role server-side
+- [x] Validate image MIME/size if upload exists
+- [x] Avoid unnecessary precise location
+- [x] Do not auto-register users for external events
+- [x] Do not scrape authenticated/private pages
+- [x] Treat source HTML as untrusted; never unsanitized render
+- Preferences stay local unless the user later opts into an account
 
 ---
 
@@ -1796,660 +1832,369 @@ Do not expose internal complexity in the normal user interface.
 
 ## Home / map
 
-Must answer immediately:
+Still answers “where is food **today**?” as a **discovery surface**.
 
-```text
-Where can I get free food today?
-```
+Above the fold: map, date, markers, upcoming opportunities.
 
-Above-the-fold content:
+Do not make this the entire pitch.
 
-- map
-- date
-- food markers
-- nearest/upcoming opportunities
-
----
-
-## Planner
+## Planner (hero)
 
 Must answer:
 
 ```text
-Can I eat lunch/dinner for free on the days I am on campus?
+Given who I am, where I will be, what I eat, and what I am willing to do,
+what is the best free-food plan for my day or week?
 ```
 
-Do not make the user configure 15 fields.
+Do not force a 15-field form before the app works. Chips + skippable onboarding.
 
-Default intelligently:
+## Event detail / trust
 
-```text
-Today
-Lunch + Dinner
-15-minute walking limit
-Explicit + Likely
-```
-
----
-
-## Event detail
-
-The most important trust element is:
+Most important trust element remains:
 
 ```text
 Why does the app think food exists?
+Confirmed food · 98% · “Lunch will be provided.”
 ```
 
-Show:
-
-```text
-Confirmed food
-98% confidence
-“Lunch will be provided.”
-```
+Add: dietary UNKNOWN warning, RSVP clarity, why-selected when the event is in a plan.
 
 ---
 
 # 28. Accessibility
 
-- [x] markers not distinguishable only by color
-- [x] buttons have text/ARIA labels
-- [x] adequate contrast
-- [x] keyboard-accessible event cards
-- [x] reduced-motion friendly
-- [x] mobile touch targets >= reasonable minimum size
+- [x] not color-only markers, ARIA, contrast, keyboard cards, reduced motion, adequate touch targets
+- Reason lists must be text, not color dots alone
 
 ---
 
 # 29. Performance
 
-Targets for demo:
+- [x] map not blocked by AI/crawl
+- [x] planner uses structured data, not a fresh LLM call
+- [x] fixture/offline path for judging
 
-- [x] initial page is responsive quickly
-- [x] map not blocked by AI calls
-- [x] source registry
-- [x] HTML fetcher
-- [x] readable text
-- [x] extraction schema
-- [x] AI extraction
-- [x] food evidence
-- [x] normalize time
-- [x] normalize location
-- [x] HackCMU fixture happens server-side/offline from main request path
-- [x] planner uses structured DB data, not fresh LLM generation
-- [x] markers load from API/database
-- [x] image assets optimized
-
-### Architectural rule
-
-**The user should never wait for the crawler just to use the map.**
-
-Crawler populates the database asynchronously.
+**The user should never wait for the crawler just to use the map or generate a plan from seeded events.**
 
 ---
 
-# 30. 24-Hour Execution Order
+# 30. Remaining execution order (given current repo)
 
-## Hour 0–2 — Skeleton
+Foundation hours 0–17 equivalent work already exists. Remaining hackathon time:
 
-- [x] repo
-- [x] database schema
-- [x] design tokens
-- [x] map shell
-- [x] seeded building data
-- [x] seeded event data
+## Block A — Data model + fixtures
 
-### Exit criterion
+- extend event + preference types
+- enrich demo events for vegetarian / pizza / Asian / walking / Friday RSVP
+- tests for metadata extraction
 
-App launches and displays CMU with at least one marker.
+## Block B — Matcher + hard filter + new scores
 
----
+- dietary compatibility
+- PersonalizedEventScore
+- replace `/api/plan` scoring
+- unit tests P0-164
 
-## Hour 2–6 — Data pipeline
+## Block C — Explainability UI + chips + onboarding
 
-- [x] source registry
-- [x] HTML fetcher
-- [x] readable text
-- [x] extraction schema
-- [x] AI extraction
-- [x] food evidence
-- [x] normalize time
-- [x] normalize location
-- [x] HackCMU fixture
+- reasons/warnings on itinerary
+- planner chips
+- skippable onboarding that writes the same store
 
-### Exit criterion
+## Block D — Week + RSVP roll-up
 
-One source/document can become validated structured events.
+- `build-week.ts` per-day greedy + action list
+- overdue / today-tomorrow required actions
 
----
+## Block E — Freeze
 
-## Hour 6–10 — Product UI
+- bugfixes, fixture reliability, demo rehearsal
+- **do not** add 3D, Scotty features, or live leftover social
 
-- [x] food markers
-- [x] date filter
-- [x] meal filter
-- [x] event bottom sheet
-- [x] confidence badge
-- [x] registration badge
-- [x] responsive mobile layout
-
-### Exit criterion
-
-User can discover and inspect food events without developer tools.
+If time remains: P1 extra public source or ICS copy polish — not gamification.
 
 ---
 
-## Hour 10–14 — Planner
+# 31. Demo Script (rewrite)
 
-- [x] preference form
-- [x] walking estimate
-- [x] scoring
-- [x] conflicts
-- [x] itinerary generation
-- [x] timeline UI
+Target ≤ 3 minutes. Center **intelligence and actionability**, not “look at our 3D map.”
 
-### Exit criterion
+## 0:00–0:25 — Problem
 
-User can generate a feasible lunch/dinner plan.
+> CMU has free food everywhere, but the information is fragmented across department pages, club events, company talks, calendars, and PDFs.
 
----
+## 0:25–0:55 — Agent extraction
 
-## Hour 14–17 — To-Do / RSVP
-
-- [x] registration extraction
-- [x] deadline display
-- [x] To-Do list
-- [x] register link
-
-### Exit criterion
-
-Future meal opportunity can produce an actionable deadline.
-
----
-
-## Hour 17–20 — High-value stretch
-
-Choose **one or two**, not all:
-
-- [ ] Google Calendar <!-- ICS fallback implemented; OAuth deferred -->
-- [x] 3D building extrusion
-- [x] photo recognition <!-- mock labels only -->
-- [x] live food remaining report <!-- local/demo state -->
-
----
-
-## Hour 20–24 — Freeze features
-
-Do not add architecture changes.
-
-Only:
-
-- [ ] bug fixes
-- [ ] responsive polish
-- [ ] loading/error states
-- [ ] fixture reliability
-- [ ] demo rehearsal
-- [ ] README
-- [ ] pitch slide
-- [ ] deploy
-- [ ] backup local demo
-
----
-
-# 31. Demo Script
-
-Target total: <= 3 minutes.
-
-## 0:00–0:20 — Problem
-
-> CMU has free food everywhere, but the information is fragmented across department pages, club events, PDFs, talks, and company events.
-
----
-
-## 0:20–0:50 — AI extraction
-
-Show source/fixture.
-
-Explain:
+Show a messy source, e.g.:
 
 ```text
-Unstructured page/PDF
-→ structured event
-→ food evidence
-→ location
-→ RSVP deadline
+Machine Learning Seminar
+Friday 12 PM
+Gates 4307
+Lunch provided
+Vegetarian options available
+RSVP by Thursday
 ```
 
-Mention that this is not manually entered event data.
+Then structured output: Lunch · Gates 4307 · 98% · vegetarian compatible · RSVP Thursday. **Show evidence.**
 
----
+## 0:55–1:20 — Personalization
 
-## 0:50–1:20 — Campus map
+```text
+Monday / Wednesday / Friday
+Lunch + Dinner
+Vegetarian
+Likes pizza + Asian food
+Max walk 12 minutes
+Willing to RSVP
+```
 
-Show:
-
-- today's map
-- markers
-- date filter
-- event detail
-- confidence/evidence
-
----
+Flip one chip (vegetarian or 12 min) so judges see the plan change.
 
 ## 1:20–2:05 — Planner
 
-Input:
+Click **PLAN MY WEEK**. For each event: meal, food, walk, preference match, confidence, **reason selected**.
 
-```text
-I’m on campus Monday, Wednesday, Friday.
-I want lunch and dinner.
-I don’t want to walk more than 12 minutes.
-```
+## 2:05–2:30 — RSVP
 
-Show optimized itinerary.
+> Register for Friday dinner by tomorrow.
 
----
+Add to To-Do.
 
-## 2:05–2:30 — RSVP action
+## 2:30–2:50 — Map
 
-Open future event:
+Show the itinerary spatially. One pan/zoom. Do not linger on 3D.
 
-```text
-Registration required
-Deadline tomorrow
-```
+## 2:50–3:00 — Close
 
-Add/view To-Do.
+> ScottyBites doesn’t just tell you where food is. It plans your week around it.
+
+Alternative:
+
+> Find tomorrow’s free food today.
 
 ---
 
-## 2:30–2:50 — Stretch feature
-
-Use exactly one:
-
-- Calendar
-- 3D map
-- photo check-in
-
----
-
-## 2:50–3:00 — Closing line
-
-> **Never miss free food at CMU again.**
-
----
-
-# 32. Judge-Facing Technical Story
+# 32. Judge-facing technical story
 
 When asked “Where is the technical difficulty?”, explain:
 
-1. **Heterogeneous ingestion**
-   - HTML
-   - dynamic pages
-   - PDFs
-   - inconsistent schemas
+1. **Heterogeneous information extraction** — HTML, PDF/fixture, listings, department/club pages.
+2. **Grounded semantic understanding** — food detection, evidence, food type/items, dietary metadata, registration, deadline.
+3. **Entity normalization** — time, location, CMU aliases, dedup.
+4. **Personalization** — hard dietary/schedule/walk/RSVP constraints vs soft cuisine/food preferences.
+5. **Spatiotemporal optimization** — meal windows, overlap, walking, future RSVP, off-campus penalty.
+6. **Explainability + uncertainty** — why selected; what is unknown.
+7. **Actionability** — RSVP Todo, weekly plan, calendar/ICS.
 
-2. **Grounded semantic extraction**
-   - food detection
-   - evidence preservation
-   - confidence levels
-   - registration/deadline parsing
+Do **not** pitch primarily as a map, an LLM wrapper, or a free-food alert app.
 
-3. **Entity resolution**
-   - noisy CMU building names
-   - aliases
-   - room normalization
-
-4. **Deduplication**
-   - same event across multiple sources
-
-5. **Spatiotemporal optimization**
-   - meal time windows
-   - event overlap
-   - walking cost
-   - RSVP constraints
-   - off-campus penalty
-
-6. **Actionability**
-   - To-Do
-   - Calendar
-   - route/map
-
-This is substantially more than a chat UI around an LLM.
+This is substantially more than a chat UI around an LLM: the optimizer and matcher never call an LLM.
 
 ---
 
-# 33. Agent / Cursor Working Rules
-
-These rules are important if Cursor Agent is executing this file.
+# 33. Agent / Cursor working rules
 
 ## Before starting a task
 
 1. Read this entire `task.md`.
-2. Identify the next unchecked task with the highest priority.
-3. Inspect relevant existing files.
-4. Do not rewrite working unrelated modules.
+2. Identify the next **unchecked P0** with the highest priority (personalization / matcher / week / explainability before any P2).
+3. Inspect existing files. The skeleton already works — extend it.
+4. Do not rewrite working unrelated modules (especially Scotty, pixel map internals, 3D extrusion).
 5. State the implementation plan briefly.
 
 ## While implementing
 
-- [ ] Prefer small, composable modules.
-- [ ] Use TypeScript strict typing.
-- [ ] Validate external/AI data.
-- [ ] Run tests/build after meaningful changes.
-- [ ] Do not add dependencies without a clear reason.
-- [ ] Do not silently change schema semantics.
-- [ ] Preserve event source provenance.
-- [ ] Preserve AI evidence.
-- [ ] Do not fabricate missing source facts.
-- [ ] Do not make the UI dependent on a live crawler.
+- Prefer small, composable modules.
+- TypeScript strict typing.
+- Validate external/AI data with Zod.
+- Run tests/build after meaningful changes.
+- Do not add dependencies without a clear reason.
+- Do not silently change schema semantics.
+- Preserve provenance and food evidence.
+- Do not fabricate missing source facts.
+- Do not make the UI depend on a live crawler.
+- Do not use an LLM for scoring, matching, or conflict detection.
+- Hard vs soft must stay distinct in code.
 
 ## After a task
 
 1. Run relevant tests.
 2. Run lint/typecheck.
-3. Update task checkbox only if acceptance criteria are met.
-4. Note known limitations under the task if necessary.
+3. Update checkboxes only if acceptance criteria are met.
+4. Note limitations under the task if needed.
 5. Do not mark partially working tasks complete.
 
 ---
 
-# 34. Suggested Cursor Model Strategy
+# 34. Suggested Cursor model strategy
 
-For this project, use models intentionally rather than one model for everything.
+**Cursor Grok 4.6 — High:** multi-file planner/personalization implementation, itinerary UI.
 
-## Primary implementation model
+**GPT-5.6 Sol:** matcher/optimizer correctness, schema, hard debugging.
 
-**Cursor Grok 4.6 — High effort**
-
-Use for:
-
-- initial project build
-- long multi-file agent runs
-- visual frontend work
-- map interactions
-- full vertical-slice implementation
-- turning this `task.md` into a working application
-
-Reason: it is optimized in Cursor for long-running agentic coding and ambitious interactive/visual first passes.
-
-## Architecture / hard debugging fallback
-
-**GPT-5.6 Sol**
-
-Use for:
-
-- architecture review
-- planner/optimization logic
-- difficult TypeScript bugs
-- database design
-- major refactors
-- complex multi-step debugging
-- reviewing the finished implementation against this task file
-
-## Fast iteration model
-
-**Composer 2.5**
-
-Use for:
-
-- CSS tweaks
-- renaming
-- small components
-- straightforward CRUD
-- quick test fixes
-- repetitive local edits
-
-### Recommended workflow
+**Composer 2.5:** chips CSS, copy, small tests.
 
 ```text
 Grok 4.6 High
-  ↓
-build the main vertical slice
-  ↓
+  ↓ implement personalization vertical slice
 GPT-5.6 Sol
-  ↓
-audit architecture + fix hard problems
-  ↓
+  ↓ audit matcher + scores + tests
 Composer 2.5
-  ↓
-fast UI polish / small edits
+  ↓ UI polish
 ```
 
 ---
 
-# 35. First Prompt to Give Cursor Agent
+# 35. Next Cursor prompt — Personalization vertical slice
 
-Paste this after placing `task.md` in the repository:
+Paste after this `task.md` update:
 
 ```text
 Read task.md completely before making changes.
 
-We are building the HackCMU MVP described there.
+Do not rebuild the Next.js skeleton, map, crawler, or Scotty/gamification.
 
-Work strictly in priority order and begin with the smallest end-to-end vertical slice.
-Do not implement P1 or P2 features until the P0 pipeline works.
+Implement the remaining P0 personalization vertical slice:
 
-Your first goal is:
+1. Extend event + user preference types (food_items, cuisine_tags, dietary_tags, hard vs soft prefs).
+2. Enrich demo fixtures so vegetarian / pizza / Asian / walking / RSVP-deadline stories work.
+3. Dietary compatibility COMPATIBLE | INCOMPATIBLE | UNKNOWN (never infer from silence).
+4. Preference matcher → PersonalizedEventScore with reasons / warnings / rejections.
+5. Planner Phase 1 hard filter → Phase 2 scores → Phase 3 greedy itinerary.
+6. Explainability on the Plan UI + compact preference chips.
+7. Skippable onboarding writing the same preference store.
+8. Simplified weekly planner + RSVP action roll-up.
+9. Unit tests in TASK P0-164.
 
-1. initialize or inspect the Next.js/TypeScript project,
-2. create the core typed event/building/source models,
-3. create the database schema/migration,
-4. add deterministic seeded CMU building and event data,
-5. render the CMU-centered interactive map,
-6. display food event markers and an event detail sheet.
-
-After that, stop and verify:
-- lint
-- typecheck
-- production build
-- basic UI functionality
-
-Update task.md checkboxes only for work that actually satisfies its acceptance criteria.
-
-Keep the UI map-first, polished, soft, mobile-friendly, and uncluttered.
-Do not build gamification, indoor floors, or complex auth yet.
+Do not implement P2 photo, points, 3D, or indoor maps.
+Do not use an LLM inside the optimizer.
+Run lint, typecheck, tests when done.
+Update task.md checkboxes only when acceptance criteria are truly met.
 ```
 
 ---
 
-# 36. Second Cursor Prompt — Data Pipeline
-
-After the first milestone works:
+# 36. Follow-up Cursor prompt — Week + demo freeze
 
 ```text
 Continue from task.md.
 
-Now implement the P0 ingestion vertical slice:
+Polish Plan my week, required-action To-Dos, map highlight of the itinerary, and demo fixtures.
 
-SOURCE REGISTRY
-→ FETCH
-→ READABLE TEXT
-→ STRUCTURED EVENT EXTRACTION
-→ FOOD CLASSIFICATION + EVIDENCE
-→ TIME NORMALIZATION
-→ LOCATION NORMALIZATION
-→ VALIDATED EVENT OBJECT
+Rehearse the 3-minute script in section 31.
 
-Use Zod validation around AI output.
-
-Never fabricate event details that are absent from a source.
-Every non-NONE food classification must preserve supporting evidence.
-
-Add tests using the HackCMU 2026 fixture before adding multiple real sources.
-
-Do not work on P1 features.
-Run lint, typecheck, tests, and build when complete.
+Do not add gamification or 3D work.
 ```
 
 ---
 
-# 37. Third Cursor Prompt — Planner
-
-After map + ingestion works:
-
-```text
-Continue from task.md and implement the P0 personalized planner.
-
-Requirements:
-- requested meal types
-- chosen date/day
-- max walking time
-- starting/default building
-- food confidence
-- registration status
-- off-campus penalty
-- event overlap
-- walking feasibility between consecutive events
-
-Use deterministic structured-data logic, not an LLM, for optimization.
-
-Start with the scoring formula in task.md.
-A greedy constrained optimizer is sufficient for the hackathon.
-
-Add unit tests for:
-- overlapping events
-- insufficient walking time
-- expired RSVP
-- no candidate meal
-- two compatible meals
-
-Then build the planner result timeline UI.
-
-Do not implement CP-SAT or other advanced optimization yet.
-```
-
----
-
-# 38. Pre-Demo Checklist
+# 37. Pre-demo checklist
 
 ## Data
 
-- [x] seeded fallback data works
-- [ ] one real source works <!-- public adapters exist; demo uses fixtures. Live CMU pages are JS-heavy/best-effort. -->
-- [x] HackCMU fixture works
-- [x] no duplicate obvious events
+- [x] seeded fallback
+- [ ] one live public source (best-effort; not required)
+- [x] HackCMU fixture
 - [x] evidence visible
+- [x] personalization demo events (veg / pizza / walk / future RSVP)
 
 ## Map
 
-- [x] opens at CMU
-- [x] markers visible
-- [x] filters work
-- [x] no token/config errors
-- [x] mobile works
+- [x] opens at CMU, markers, filters, no token errors, mobile
+- [x] selected itinerary visible on map
 
-## Planner
+## Personalization / planner
 
-- [x] lunch candidate
-- [x] dinner candidate
-- [x] realistic walking times
-- [x] no overlaps
-- [x] output deterministic enough for demo
+- [x] lunch + dinner candidates, realistic walks, no overlaps, deterministic day plan
+- [x] vegetarian changes ranking/eligibility
+- [x] favorites change ranking
+- [x] max walk changes itinerary
+- [x] reasons on every selected event
+- [x] UNKNOWN diet warning
+- [x] week plan or clearly simplified per-day week
 
 ## RSVP
 
-- [x] at least one event requires RSVP
-- [x] deadline visible
-- [x] To-Do works
+- [x] at least one RSVP event, deadline, To-Do
+- [x] week required-actions (today / tomorrow)
 
 ## Deployment
 
-- [x] production build
-- [ ] deployment URL <!-- requires Vercel/human login -->
-- [x] `.env` configured <!-- .env.example only; no secrets -->
-- [x] backup local build
-- [x] demo mode available
+- [x] production build, demo mode, `.env.example`
+- [ ] deployment URL (human Vercel login)
 
 ## Presentation
 
-- [ ] 3-minute rehearsal
-- [ ] one strong narrative
-- [ ] explain technical depth
-- [ ] explain evidence/grounding
-- [ ] explain optimization
-- [ ] end with clear value proposition
+- [ ] 3-minute rehearsal of the **new** narrative
+- [ ] extraction evidence
+- [ ] personalization chip flip
+- [ ] optimization + explainability
+- [ ] RSVP action
+- [ ] close on planning, not the map
 
 ---
 
-# 39. Explicit Non-Goals for the 24-Hour MVP
+# 38. Explicit non-goals for remaining MVP time
 
-Do not spend critical hackathon time on:
+Do not spend critical time on:
 
-- [ ] full native iOS app
-- [ ] full native Android app
-- [ ] perfect indoor navigation
-- [ ] modeling every CMU floor
-- [ ] autonomous RSVP form submission
-- [ ] authenticated scraping workarounds
-- [ ] full social network
-- [ ] complex point economy
-- [ ] advanced recommendation ML
-- [ ] production-scale distributed crawler
-- [ ] perfect campus routing engine
-- [ ] complex CP-SAT optimizer before the greedy version works
+- native iOS / Android
+- indoor navigation / every CMU floor
+- autonomous RSVP form submission
+- authenticated scraping workarounds
+- social network, points economy, leaderboards
+- live leftover radar as the pitch
+- advanced recommendation ML / “more like this” training
+- production-scale distributed crawler
+- perfect campus routing / CP-SAT before greedy+matcher works
+- further 3D campus work
 
 ---
 
-# 40. Post-Hackathon Roadmap
+# 39. Post-hackathon roadmap
 
 ## Phase A — Reliability
 
-- source monitoring
-- crawl retry queue
-- source-specific adapters
-- extraction evaluation set
-- human correction workflow
-- event expiration logic
+source monitoring, crawl retry, source-specific adapters, extraction eval set, human correction, event expiration
 
-## Phase B — Personalization
+## Phase B — Deeper personalization
 
-- class schedule import
-- Google Calendar read integration
-- dietary preferences
-- attendance history
-- personalized travel tolerance
+class schedule import, Google Calendar **read**, attendance history, learned travel tolerance, “more like this / less like this” **without** claiming a trained recommender on day one
 
-## Phase C — Community
+Adaptive learning from saves, attendance, photos, rejected recs is **P2/POST**. Initial personalization stays deterministic.
 
-- verified check-ins
-- photo recognition
-- live food status
-- reputation scoring
-- anti-spam
-- points/badges
+## Phase C — Community (after planner is the product)
+
+verified check-ins, photo recognition, live food status, reputation, anti-spam, badges
 
 ## Phase D — Campus GIS
 
-- route graph
-- building entrances
-- accessibility
-- indoor floors
-- room-level navigation
+route graph, entrances, accessibility, indoor floors, room-level nav
 
 ## Phase E — Expansion
 
-- Pitt
-- other universities
-- reusable campus source adapters
-- school-specific maps and building aliases
+Pitt and other universities; reusable source adapters; school-specific maps and aliases
 
 ---
 
-# 41. Final Product Principle
+# 40. Final product principle
 
-When choosing between two features, prioritize the one that strengthens this loop:
+ScottyBites should answer:
+
+**Not:** “Where is free food?”
+
+**But:** “Given who I am, where I will be, what I eat, and what I am willing to do, what is the best free-food plan for my day or week?”
+
+When choosing between two features, pick the one that strengthens:
 
 ```text
-DISCOVER
-→ UNDERSTAND
-→ VERIFY
-→ OPTIMIZE
-→ ACT
+DISCOVER → UNDERSTAND → PERSONALIZE → OPTIMIZE → ACT
 ```
 
-The core differentiator is not “a list of free food.”
+The core differentiator is not a list of free food, a 3D campus, or a pet.
 
 It is:
 
-> **AI transforms fragmented campus information into a trusted, personalized, location-aware free-food plan that the user can actually follow.**
+> **An agent that transforms fragmented campus information into a trusted, personalized, location-aware free-food plan — with evidence, uncertainty, and an RSVP the user can actually complete.**

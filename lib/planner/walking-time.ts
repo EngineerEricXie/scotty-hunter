@@ -1,12 +1,12 @@
 import { APP_CONFIG } from "@/lib/config";
 import { haversineMeters } from "@/lib/maps/geo";
 import { getBuilding } from "@/lib/maps/buildings";
+import { campusWalk } from "@/lib/maps/campus-graph";
 
 /**
- * Walking-time estimate from building coordinates.
- * Assumption: 80 m/min (~4.8 km/h), a conservative campus walking speed
- * that includes hills, stairs, and waiting at doors. Isolated so a future
- * routing provider can replace this function without touching the planner.
+ * Walking-time estimate. Prefers the campus connector graph (indoor
+ * walkways, The Cut crossing) and falls back to haversine for off-graph
+ * buildings such as Craig Street.
  */
 export function walkingMinutesBetween(
   fromBuildingId: string | null | undefined,
@@ -14,6 +14,9 @@ export function walkingMinutesBetween(
 ): number {
   if (!fromBuildingId || !toBuildingId) return 8;
   if (fromBuildingId === toBuildingId) return 2;
+
+  const routed = campusWalk(fromBuildingId, toBuildingId);
+  if (routed) return Math.max(2, routed.minutes);
 
   const from = getBuilding(fromBuildingId);
   const to = getBuilding(toBuildingId);
@@ -37,6 +40,11 @@ export function walkingMetersBetween(
   const to = getBuilding(toBuildingId);
   if (!from || !to) return null;
   return Math.round(
-    haversineMeters(from.latitude, from.longitude, to.latitude, to.longitude),
+    haversineMeters(
+      from.latitude,
+      from.longitude,
+      to.latitude,
+      to.longitude,
+    ),
   );
 }

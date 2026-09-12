@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import type { Event } from "@/lib/types";
 import { foodEmoji } from "@/lib/food-ui";
 import { foodStatusLabel } from "@/lib/extraction/classify-food";
@@ -9,9 +10,13 @@ import { walkingMinutesBetween } from "@/lib/planner/walking-time";
 import { FoodConfidenceBadge } from "@/components/events/FoodConfidenceBadge";
 import { RegistrationBadge } from "@/components/events/RegistrationBadge";
 import { FloorSelector } from "@/components/map/FloorSelector";
-import { AvailabilityRow } from "@/components/checkin/AvailabilityRow";
+import { loadPreferences } from "@/lib/storage/local-state";
+import { worstDietaryCompatibility } from "@/lib/personalization/dietary-compatibility";
 import { PhotoCheckIn } from "@/components/checkin/PhotoCheckIn";
+import { AvailabilityRow } from "@/components/checkin/AvailabilityRow";
 import { NowGoingBadge } from "@/components/live/NowGoingTicker";
+import { getHiddenMenu } from "@/lib/vision/hidden-menu";
+import { isMenuUnlocked, loadScotty, onScottyChange } from "@/lib/scotty/state";
 
 export function EventBottomSheet({
   event,
@@ -24,9 +29,27 @@ export function EventBottomSheet({
   onAddToPlan: (event: Event) => void;
   onAddTodo: (event: Event) => void;
 }) {
+  const [, setScottyTick] = useState(0);
+
+  useEffect(() => {
+    return onScottyChange(() => setScottyTick((tick) => tick + 1));
+  }, []);
+
   if (!event) return null;
   const building = getBuilding(event.building_id);
   const walk = walkingMinutesBetween("ghc", event.building_id);
+  const prefs = loadPreferences();
+  const diet = worstDietaryCompatibility(event, prefs.dietary_constraints);
+  const hidden = getHiddenMenu(event.id);
+  const menuUnlocked = isMenuUnlocked(event.id, loadScotty());
+  const dietNote =
+    prefs.dietary_constraints.length === 0
+      ? null
+      : diet === "COMPATIBLE"
+        ? `Matches ${prefs.dietary_constraints.join(", ")} preference`
+        : diet === "INCOMPATIBLE"
+          ? "Known incompatible with your diet"
+          : `${prefs.dietary_constraints[0]} options not confirmed`;
 
   return (
     <aside
@@ -39,6 +62,11 @@ export function EventBottomSheet({
             <div>
               <div className="mb-1 flex flex-wrap items-center gap-2">
                 <NowGoingBadge eventId={event.id} />
+                {hidden && (
+                  <span className="hud border-2 border-ink bg-gold px-1 text-[7px]">
+                    {menuUnlocked ? "MENU UNLOCKED" : "HIDDEN MENU"}
+                  </span>
+                )}
               </div>
               <p className="text-lg font-bold leading-6">
                 <span aria-hidden className="mr-1">
@@ -103,7 +131,33 @@ export function EventBottomSheet({
           )}
 
           {event.food_types.length > 0 && (
-            <p className="mt-3 text-sm text-muted">Food type: {event.food_types.join(", ")}</p>
+            <p className="mt-3 text-sm text-muted">
+              Food: {[...event.food_items, ...event.cuisine_tags, ...event.food_types].join(", ")}
+            </p>
+          )}
+          {hidden && menuUnlocked && (
+            <p className="mt-2 text-sm font-bold text-sage">
+              Unlocked dishes: {hidden.dishes.map((dish) => dish.name).join(" · ")}
+            </p>
+          )}
+          {hidden && !menuUnlocked && (
+            <p className="mt-2 text-sm font-bold text-tartan">
+              Hidden menu locked — upload a table photo to reveal {hidden.dishes.length} dishes
+              the listing omitted.
+            </p>
+          )}
+          {dietNote && (
+            <p className={`mt-2 text-sm font-bold ${diet === "COMPATIBLE" ? "text-sage" : "text-tartan"}`}>
+              {dietNote}
+            </p>
+          )}
+          {event.food_status === "LIKELY" && (
+            <p className="mt-1 text-sm font-bold text-tartan">
+              Food is likely, but not explicitly guaranteed
+            </p>
+          )}
+          {event.registration_status === "UNKNOWN" && (
+            <p className="mt-1 text-sm font-bold text-tartan">RSVP requirement unclear</p>
           )}
 
           {event.registration_required && (
@@ -122,6 +176,7 @@ export function EventBottomSheet({
 
           <AvailabilityRow key={event.id} eventId={event.id} title={event.title} buildingId={event.building_id} />
           <PhotoCheckIn
+            key={`photo-${event.id}`}
             eventId={event.id}
             title={event.title}
             buildingId={event.building_id}

@@ -62,5 +62,7 @@ describe("HackCMU fixture pipeline", () => {
     });
     expect(plan.event_count).toBeGreaterThanOrEqual(2);
     expect(plan.events.some((event) => event.food_status !== "NONE")).toBe(true);
+    const eventLegs = plan.items.filter((item) => item.kind === "event");
+    expect(eventLegs.every((item) => (item.positive_reasons?.length ?? 0) > 0)).toBe(true);
   });
 });

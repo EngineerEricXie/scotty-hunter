@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { BottomNav } from "@/components/ui/BottomNav";
 import { StatusBar } from "@/components/ui/PressStart";
@@ -10,22 +10,53 @@ import { ATLAS_SPECIES } from "@/lib/scotty/atlas";
 import {
   atlasProgress,
   feedTreat,
+  HUNTER_SPRITES,
+  listUnlockedMenus,
   loadScotty,
   onScottyChange,
   QUESTS,
+  renameHunter,
+  renamePet,
   scottyMood,
   scottyRank,
   type ScottyState,
 } from "@/lib/scotty/state";
-import { useEffect } from "react";
 
-const RIVALS = [
-  { name: "PixelTartan", points: 186 },
-  { name: "RangosRaider", points: 142 },
-  { name: "WeanWalker", points: 97 },
-];
+function NameField({
+  value,
+  ariaLabel,
+  onCommit,
+  className,
+}: {
+  value: string;
+  ariaLabel: string;
+  onCommit: (next: string) => void;
+  className?: string;
+}) {
+  const [draft, setDraft] = useState(value);
+  useEffect(() => setDraft(value), [value]);
+  return (
+    <input
+      aria-label={ariaLabel}
+      value={draft}
+      maxLength={18}
+      onChange={(event) => setDraft(event.target.value)}
+      onBlur={() => onCommit(draft)}
+      onKeyDown={(event) => {
+        if (event.key === "Enter") (event.target as HTMLInputElement).blur();
+      }}
+      className={className}
+    />
+  );
+}
 
-export function ScottyExperience() {
+export function ScottyExperience({
+  variant = "page",
+  onClose,
+}: {
+  variant?: "page" | "overlay";
+  onClose?: () => void;
+}) {
   const [state, setState] = useState<ScottyState>(loadScotty);
   const [action, setAction] = useState<"idle" | "eat" | "hungry">("idle");
   const [treatNote, setTreatNote] = useState("");
@@ -38,8 +69,11 @@ export function ScottyExperience() {
   const mood = scottyMood(state);
   const progress = atlasProgress(state);
   const board = useMemo(() => {
-    return [...RIVALS, { name: "YOU", points: state.points }].sort((a, b) => b.points - a.points);
-  }, [state.points]);
+    return [
+      ...state.hunters,
+      { id: "you", name: state.hunterName, animal: "terrier" as const, points: state.points },
+    ].sort((a, b) => b.points - a.points);
+  }, [state.hunterName, state.hunters, state.points]);
 
   function treat() {
     const next = feedTreat();
@@ -48,21 +82,41 @@ export function ScottyExperience() {
       return;
     }
     setAction("eat");
-    setTreatNote("Scotty chomped a tartan biscuit.");
+    setTreatNote(`${state.name} chomped a tartan biscuit.`);
     window.setTimeout(() => setAction("idle"), 900);
   }
 
+  const overlay = variant === "overlay";
+
   return (
-    <div className="min-h-dvh bg-canvas pb-28">
+    <div className={overlay ? "pb-2" : "min-h-dvh bg-canvas pb-28"}>
       <main className="mx-auto max-w-lg px-4 pt-[max(14px,env(safe-area-inset-top))]">
-        <div className="pixel-panel bg-card p-3">
+        <div className="pixel-panel bg-card/95 p-3">
           <StatusBar right="PET" />
+          <div className="mt-3 flex items-start justify-between gap-3">
+            <p className="hud text-[9px] text-muted">TAP A NAME TO RENAME</p>
+            {onClose && (
+              <button
+                type="button"
+                className="pixel-chip min-h-10 shrink-0 px-3 text-sm"
+                onClick={onClose}
+                aria-label="Close Scotty"
+              >
+                CLOSE
+              </button>
+            )}
+          </div>
           <div className="mt-3 grid grid-cols-[140px_1fr] gap-3">
-            <div className="border-4 border-ink bg-sky p-2">
+            <div className="overflow-hidden border-4 border-ink bg-[#fff4d6]">
               <ScottySprite mood={mood} action={mood === "hungry" ? "hungry" : action} />
             </div>
             <div>
-              <p className="hud text-[10px]">{state.name}</p>
+              <NameField
+                value={state.name}
+                ariaLabel="Pet name"
+                onCommit={(next) => renamePet(next)}
+                className="hud w-full border-4 border-ink bg-white px-2 py-1 text-[10px] uppercase"
+              />
               <p className="mt-1 text-sm font-bold">{scottyRank(state.xp)}</p>
               <p className="mt-2 text-sm">
                 HP {state.hunger}/100 · XP {state.xp} · {state.points} PTS
@@ -79,7 +133,7 @@ export function ScottyExperience() {
           {treatNote && <p className="mt-2 text-sm font-bold">{treatNote}</p>}
         </div>
 
-        <section className="pixel-panel mt-4 bg-card p-3">
+        <section className="pixel-panel mt-4 bg-card/95 p-3">
           <p className="hud text-[9px] text-tartan">FOOD DEX {progress.caught}/{progress.total}</p>
           <div className="mt-3 grid grid-cols-2 gap-2">
             {ATLAS_SPECIES.map((species) => {
@@ -103,8 +157,26 @@ export function ScottyExperience() {
         </section>
 
         <PhotoCheckIn />
+        <p className="mt-2 px-1 text-xs font-bold text-muted">
+          To unlock a hidden menu, open Saturday Lunch (or RI pizza) on the map and upload a table
+          photo.
+        </p>
 
-        <section className="pixel-panel mt-4 bg-card p-3">
+        {listUnlockedMenus(state).length > 0 && (
+          <section className="pixel-panel mt-4 bg-card/95 p-3">
+            <p className="hud text-[9px] text-tartan">UNLOCKED MENUS</p>
+            <ul className="mt-2 space-y-2">
+              {listUnlockedMenus(state).map((menu) => (
+                <li key={menu.eventId} className="border-4 border-ink bg-[#fffaf0] p-2">
+                  <p className="text-sm font-bold">{menu.dishes.map((dish) => dish.emoji).join(" ")}</p>
+                  <p className="mt-1 text-xs font-bold leading-5">{menu.scoutBlurb}</p>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+
+        <section className="pixel-panel mt-4 bg-card/95 p-3">
           <p className="hud text-[9px]">QUESTS</p>
           <ul className="mt-2 space-y-2">
             {QUESTS.map((quest) => (
@@ -121,10 +193,25 @@ export function ScottyExperience() {
 
         <section className="pixel-panel mt-4 bg-ink p-3 text-gold">
           <p className="hud text-[9px]">TARTAN HUNTERS</p>
-          <ol className="mt-2 space-y-1 text-sm">
+          <p className="mt-1 text-xs font-bold text-[#f4d03f]/80">Campus animals — rename anyone.</p>
+          <ol className="mt-2 space-y-2 text-sm">
             {board.map((row, index) => (
-              <li key={row.name} className={row.name === "YOU" ? "font-bold text-white" : ""}>
-                {index + 1}. {row.name} · {row.points}
+              <li key={row.id} className="flex items-center gap-2">
+                <img
+                  src={HUNTER_SPRITES[row.animal]}
+                  alt=""
+                  className="pixel-sprite h-10 w-10 shrink-0 border-2 border-gold bg-[#fff4d6] object-cover"
+                />
+                <span className="hud w-4 text-[8px]">{index + 1}</span>
+                <NameField
+                  value={row.name}
+                  ariaLabel={`${row.animal} hunter name`}
+                  onCommit={(next) => renameHunter(row.id, next)}
+                  className={`min-w-0 flex-1 border-2 border-gold bg-[#1b1224] px-2 py-1 text-sm ${
+                    row.id === "you" ? "font-bold text-white" : "text-gold"
+                  }`}
+                />
+                <span className="hud text-[8px]">{row.points}</span>
               </li>
             ))}
           </ol>
@@ -136,7 +223,7 @@ export function ScottyExperience() {
           </Link>
         </p>
       </main>
-      <BottomNav current="/scotty" />
+      {!overlay && <BottomNav current="/scotty" />}
     </div>
   );
 }

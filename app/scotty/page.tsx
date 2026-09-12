@@ -1,14 +1,5 @@
-"use client";
-
-import dynamic from "next/dynamic";
-import { LoadingState } from "@/components/ui/States";
-
-const ScottyExperience = dynamic(
-  () =>
-    import("@/components/pet/ScottyExperience").then((mod) => mod.ScottyExperience),
-  { ssr: false, loading: () => <LoadingState label="Waking Scotty…" /> },
-);
+import { PanelRedirect } from "@/components/ui/PanelRedirect";
 
 export default function ScottyPage() {
-  return <ScottyExperience />;
+  return <PanelRedirect panel="scotty" label="Waking Scotty…" />;
 }
