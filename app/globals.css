@@ -1,0 +1,103 @@
+@import "tailwindcss";
+
+:root {
+  color-scheme: light;
+  --canvas: #e8edf2;
+  --card: #ffffff;
+  --ink: #1c1c1e;
+  --muted: #6e6e73;
+  --line: rgba(28, 28, 30, 0.08);
+  --tartan: #c41230;
+  --tartan-soft: #e85d4c;
+  --sage: #2f6f4e;
+  --gold: #d4a017;
+  --shadow: 0 10px 40px rgba(28, 28, 30, 0.12);
+  --shadow-soft: 0 4px 18px rgba(28, 28, 30, 0.08);
+}
+
+@theme inline {
+  --color-canvas: var(--canvas);
+  --color-card: var(--card);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-tartan: var(--tartan);
+  --color-sage: var(--sage);
+  --color-gold: var(--gold);
+  --font-sans: ui-rounded, "SF Pro Rounded", "Hiragino Maru Gothic ProN",
+    ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    sans-serif;
+  --radius-card: 22px;
+  --radius-pill: 999px;
+}
+
+html,
+body {
+  height: 100%;
+  background: var(--canvas);
+  color: var(--ink);
+}
+
+body {
+  font-family: var(--font-sans);
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.maplibregl-ctrl-attrib {
+  font-size: 10px;
+}
+
+.maplibregl-ctrl-group {
+  border-radius: 14px !important;
+  overflow: hidden;
+  box-shadow: var(--shadow-soft) !important;
+}
+
+.food-marker {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 999px;
+  background: #fff;
+  box-shadow: 0 6px 18px rgba(28, 28, 30, 0.16);
+  font: 600 13px/1 var(--font-sans);
+  color: var(--ink);
+  cursor: pointer;
+  transform: translateY(-2px);
+}
+
+.food-marker[data-status="LIKELY"] {
+  background: #fff8ee;
+}
+
+.food-marker[data-status="POSSIBLE"] {
+  background: #f4f4f6;
+}
+
+.food-marker[data-selected="true"] {
+  outline: 2px solid var(--tartan);
+  transform: translateY(-4px) scale(1.06);
+}
+
+.food-marker .hour {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
