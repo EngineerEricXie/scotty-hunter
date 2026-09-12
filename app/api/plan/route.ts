@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getEventRepository } from "@/lib/db";
+import { applyCorpusBoost } from "@/lib/community/boost";
 import { buildItinerary } from "@/lib/planner/build-itinerary";
 
 const BodySchema = z.object({
@@ -24,10 +25,12 @@ export async function POST(request: Request) {
       );
     }
     const repo = getEventRepository();
-    const events = await repo.listEvents({
-      date: parsed.data.date,
-      include_none: false,
-    });
+    const events = applyCorpusBoost(
+      await repo.listEvents({
+        date: parsed.data.date,
+        include_none: false,
+      }),
+    );
     const itinerary = buildItinerary(events, {
       ...parsed.data,
       allow_expired_registration: parsed.data.allow_expired_registration ?? false,

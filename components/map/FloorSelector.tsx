@@ -18,8 +18,8 @@ export function FloorSelector({
         {floors.map((item) => (
           <span
             key={item}
-            className={`grid h-9 w-9 place-items-center rounded-xl text-xs font-semibold ${
-              floor === item ? "bg-ink text-white" : "bg-canvas text-muted"
+            className={`grid h-9 w-9 place-items-center border-4 border-ink text-xs font-bold ${
+              floor === item ? "bg-ink text-gold" : "bg-white text-muted"
             }`}
           >
             {item}

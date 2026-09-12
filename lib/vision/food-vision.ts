@@ -1,5 +1,8 @@
+import { matchAtlasIds } from "@/lib/scotty/atlas";
+
 export interface FoodVisionResult {
   labels: string[];
+  atlasIds: string[];
   confidence: number;
   provider: "mock" | "real";
 }
@@ -14,16 +17,24 @@ export class MockFoodVisionService implements FoodVisionService {
 
   async analyze(fileName: string, _byteLength: number, mime: string): Promise<FoodVisionResult> {
     const lower = fileName.toLowerCase();
-    if (lower.includes("pizza") || lower.includes("pepperoni")) {
-      return { labels: ["Pepperoni pizza", "Salad"], confidence: 0.82, provider: "mock" };
+    if (lower.includes("pizza") || lower.includes("pepperoni") || lower.includes("hackcmu")) {
+      const labels = ["Pepperoni pizza", "Salad", "HackCMU catering"];
+      return { labels, atlasIds: matchAtlasIds(labels), confidence: 0.86, provider: "mock" };
     }
     if (lower.includes("bagel") || lower.includes("breakfast")) {
-      return { labels: ["Bagels", "Coffee"], confidence: 0.74, provider: "mock" };
+      const labels = ["Bagels", "Coffee"];
+      return { labels, atlasIds: matchAtlasIds(labels), confidence: 0.78, provider: "mock" };
+    }
+    if (lower.includes("cookie") || lower.includes("midnight")) {
+      const labels = ["Cookies", "Midnight snacks"];
+      return { labels, atlasIds: matchAtlasIds(labels), confidence: 0.81, provider: "mock" };
     }
     if (mime.startsWith("image/")) {
-      return { labels: ["Campus catering tray", "Cookies"], confidence: 0.61, provider: "mock" };
+      const labels = ["Campus catering tray", "Cookies"];
+      return { labels, atlasIds: matchAtlasIds(labels), confidence: 0.64, provider: "mock" };
     }
-    return { labels: ["Unknown dish"], confidence: 0.2, provider: "mock" };
+    const labels = ["Unknown dish"];
+    return { labels, atlasIds: matchAtlasIds(labels), confidence: 0.2, provider: "mock" };
   }
 }
 

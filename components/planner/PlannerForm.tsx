@@ -38,7 +38,7 @@ export function PlannerForm({
           type="date"
           value={date}
           onChange={(e) => onChangeDate(e.target.value)}
-          className="mt-1 min-h-11 w-full rounded-2xl border border-line bg-white px-3 text-sm"
+          className="mt-1 min-h-11 w-full border-4 border-ink bg-white px-3 text-sm"
         />
       </label>
 
@@ -60,9 +60,8 @@ export function PlannerForm({
                 type="button"
                 key={meal}
                 onClick={() => toggleMeal(key)}
-                className={`min-h-11 rounded-full px-4 text-sm font-semibold ${
-                  active ? "bg-ink text-white" : "border border-line bg-white"
-                }`}
+                data-on={active ? "true" : "false"}
+                className="pixel-chip min-h-11 bg-white px-4 text-sm"
               >
                 {meal[0].toUpperCase() + meal.slice(1)}
               </button>
@@ -94,7 +93,7 @@ export function PlannerForm({
         <select
           value={value.home_building_id}
           onChange={(e) => onChange({ ...value, home_building_id: e.target.value })}
-          className="mt-1 min-h-11 w-full rounded-2xl border border-line bg-white px-3 text-sm"
+          className="mt-1 min-h-11 w-full border-4 border-ink bg-white px-3 text-sm"
         >
           {BUILDINGS.filter((b) => !b.off_campus).map((building) => (
             <option key={building.id} value={building.id}>
@@ -114,9 +113,8 @@ export function PlannerForm({
               include_likely: value.explicit_only,
             })
           }
-          className={`min-h-11 flex-1 rounded-2xl text-sm font-semibold ${
-            value.explicit_only ? "bg-ink text-white" : "border border-line bg-white"
-          }`}
+          data-on={value.explicit_only ? "true" : "false"}
+          className="pixel-chip min-h-11 flex-1 bg-white text-sm"
         >
           Explicit only
         </button>
@@ -129,11 +127,8 @@ export function PlannerForm({
               explicit_only: false,
             })
           }
-          className={`min-h-11 flex-1 rounded-2xl text-sm font-semibold ${
-            value.include_likely && !value.explicit_only
-              ? "bg-ink text-white"
-              : "border border-line bg-white"
-          }`}
+          data-on={value.include_likely && !value.explicit_only ? "true" : "false"}
+          className="pixel-chip min-h-11 flex-1 bg-white text-sm"
         >
           Include likely
         </button>
@@ -142,7 +137,7 @@ export function PlannerForm({
       <button
         type="submit"
         disabled={busy}
-        className="min-h-12 w-full rounded-2xl bg-tartan text-sm font-semibold text-white disabled:opacity-60"
+        className="pixel-btn min-h-12 w-full bg-tartan text-sm text-white disabled:opacity-60"
       >
         {busy ? "Planning…" : "Plan my free food day"}
       </button>

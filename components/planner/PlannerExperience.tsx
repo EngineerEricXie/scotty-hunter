@@ -4,15 +4,13 @@ import { useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import type { Itinerary, MealType, UserPreference } from "@/lib/types";
 import { demoToday } from "@/lib/demo-clock";
-import {
-  loadPreferences,
-  savePreferences,
-} from "@/lib/storage/local-state";
+import { loadPreferences, savePreferences } from "@/lib/storage/local-state";
 import { PlannerForm } from "@/components/planner/PlannerForm";
 import { MealItinerary } from "@/components/planner/MealItinerary";
 import { RouteSummary } from "@/components/planner/RouteSummary";
 import { BottomNav } from "@/components/ui/BottomNav";
 import { UnavailableIntegration } from "@/components/ui/States";
+import { StatusBar } from "@/components/ui/PressStart";
 
 export function PlannerExperience() {
   const params = useSearchParams();
@@ -85,39 +83,37 @@ export function PlannerExperience() {
 
   return (
     <div className="min-h-dvh bg-canvas pb-28">
-      <main className="mx-auto max-w-lg px-4 pt-[max(20px,env(safe-area-inset-top))]">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">
-          Personalized itinerary
-        </p>
-        <h1 className="mt-1 text-2xl font-semibold">Plan my free food day</h1>
-        <p className="mt-2 text-sm leading-6 text-muted">
-          Deterministic scoring — not an LLM. Walking uses building coordinates
-          at 80 m/min.
-        </p>
-
-        <div className="mt-5 rounded-[24px] border border-line bg-white p-4">
-          <PlannerForm
-            value={prefs}
-            date={date}
-            onChangeDate={setDate}
-            onChange={setPrefs}
-            onSubmit={submit}
-            busy={busy}
-          />
+      <main className="mx-auto max-w-lg px-4 pt-[max(14px,env(safe-area-inset-top))]">
+        <div className="pixel-panel bg-card p-4">
+          <StatusBar right="PLAN" />
+          <h1 className="hud mt-3 text-[13px] leading-6">FREE FOOD ROUTE</h1>
+          <p className="mt-2 text-sm font-bold leading-6 text-muted">
+            Deterministic scoring — not an LLM. Walking uses building coordinates at 80 m/min.
+          </p>
+          <div className="mt-4">
+            <PlannerForm
+              value={prefs}
+              date={date}
+              onChangeDate={setDate}
+              onChange={setPrefs}
+              onSubmit={submit}
+              busy={busy}
+            />
+          </div>
         </div>
 
-        {error && <p className="mt-3 text-sm text-tartan">{error}</p>}
+        {error && <p className="mt-3 text-sm font-bold text-gold">{error}</p>}
 
         {plan && (
-          <div className="mt-5 space-y-3">
+          <div className="mt-4 space-y-3">
             <RouteSummary plan={plan} />
             <MealItinerary plan={plan} />
             <button
               type="button"
               onClick={downloadIcs}
-              className="min-h-11 w-full rounded-2xl bg-white text-sm font-semibold"
+              className="pixel-btn min-h-11 w-full bg-card text-sm"
             >
-              Add day to calendar (.ics)
+              ADD DAY TO CALENDAR (.ICS)
             </button>
             <UnavailableIntegration
               name="Google Calendar"

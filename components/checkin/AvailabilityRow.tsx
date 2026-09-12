@@ -1,6 +1,7 @@
 "use client";
 
-import { latestAvailability, reportAvailability, addPoints } from "@/lib/storage/local-state";
+import { latestAvailability, reportAvailability } from "@/lib/storage/local-state";
+import { pingNowGoing } from "@/lib/scotty/state";
 import type { AvailabilityStatus } from "@/lib/types";
 import { useState } from "react";
 
@@ -16,20 +17,40 @@ function recency(iso: string): string {
   return `${min} min ago`;
 }
 
-export function AvailabilityRow({ eventId }: { eventId: string }) {
+export function AvailabilityRow({
+  eventId,
+  title,
+  buildingId,
+}: {
+  eventId: string;
+  title?: string;
+  buildingId?: string | null;
+}) {
   const [report, setReport] = useState(() => latestAvailability(eventId));
 
   function choose(status: AvailabilityStatus) {
     const next = reportAvailability(eventId, status);
-    addPoints(5);
+    if (status === "PLENTY" || status === "SOME") {
+      pingNowGoing({
+        eventId,
+        title: title ?? "Free food",
+        buildingId: buildingId ?? null,
+        dish: status === "PLENTY" ? "Plenty left" : "Some left",
+        kind: "report",
+      });
+    }
     setReport(next);
   }
 
   return (
     <div className="mt-4">
       {report ? (
-        <p className="text-sm font-medium">
-          {report.status === "PLENTY" ? "🟢 Plenty left" : report.status === "SOME" ? "🟡 Some left" : "🔴 Gone"}
+        <p className="text-sm font-bold">
+          {report.status === "PLENTY"
+            ? "🟢 Plenty left"
+            : report.status === "SOME"
+              ? "🟡 Some left"
+              : "🔴 Gone"}
           {" · "}
           reported {recency(report.reported_at)}
         </p>
@@ -42,7 +63,7 @@ export function AvailabilityRow({ eventId }: { eventId: string }) {
             key={option.id}
             type="button"
             onClick={() => choose(option.id)}
-            className="min-h-10 flex-1 rounded-2xl bg-canvas text-xs font-semibold"
+            className="pixel-btn min-h-10 flex-1 bg-white text-xs"
             aria-label={`Report ${option.label} remaining`}
           >
             {option.swatch} {option.label}

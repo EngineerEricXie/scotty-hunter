@@ -4,25 +4,26 @@ import { foodStatusLabel } from "@/lib/extraction/classify-food";
 export function FoodConfidenceBadge({
   status,
   confidence,
+  boosted,
 }: {
   status: FoodStatus;
   confidence: number;
+  boosted?: boolean;
 }) {
   const pct = Math.round(confidence * 100);
   const tone =
     status === "EXPLICIT"
-      ? "bg-emerald-50 text-sage"
+      ? "bg-[#d7f5de]"
       : status === "LIKELY"
-        ? "bg-amber-50 text-amber-800"
+        ? "bg-[#ffe08a]"
         : status === "POSSIBLE"
-          ? "bg-slate-100 text-slate-600"
-          : "bg-slate-100 text-muted";
+          ? "bg-[#e8e0d0]"
+          : "bg-[#e8e0d0]";
   return (
-    <span
-      className={`inline-flex min-h-8 items-center rounded-full px-3 text-xs font-semibold ${tone}`}
-    >
+    <span className={`inline-flex min-h-8 items-center border-4 border-ink px-2 text-xs font-bold ${tone}`}>
       {foodStatusLabel(status)}
       {status !== "NONE" ? ` · ${pct}%` : ""}
+      {boosted ? " ↑" : ""}
     </span>
   );
 }

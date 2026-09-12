@@ -7,6 +7,7 @@ import { loadTodos, saveTodos } from "@/lib/storage/local-state";
 import { relativeDeadline } from "@/lib/timezone";
 import { BottomNav } from "@/components/ui/BottomNav";
 import { EmptyState } from "@/components/ui/States";
+import { StatusBar } from "@/components/ui/PressStart";
 
 export function TodosExperience() {
   const [todos, setTodos] = useState<Todo[]>(loadTodos);
@@ -42,20 +43,20 @@ export function TodosExperience() {
 
   return (
     <div className="min-h-dvh bg-canvas pb-28">
-      <main className="mx-auto max-w-lg px-4 pt-[max(20px,env(safe-area-inset-top))]">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">
-          Deadlines
-        </p>
-        <h1 className="mt-1 text-2xl font-semibold">To-Dos</h1>
-        <p className="mt-2 text-sm text-muted">
-          Registration stays on the source site. ScottyBites only reminds you.
-        </p>
+      <main className="mx-auto max-w-lg px-4 pt-[max(14px,env(safe-area-inset-top))]">
+        <div className="pixel-panel bg-card p-4">
+          <StatusBar right="QUEST" />
+          <h1 className="hud mt-3 text-[13px] leading-6">RSVP QUESTS</h1>
+          <p className="mt-2 text-sm font-bold text-muted">
+            Registration stays on the source site. ScottyBites only reminds you.
+          </p>
+        </div>
 
-        <div className="mt-5 space-y-3">
+        <div className="mt-4 space-y-3">
           {sorted.length === 0 && (
             <EmptyState
               title="No RSVP tasks yet"
-              body="Open an event that requires registration and save it as a To-Do."
+              body="Open an event that requires registration and save it as a Quest."
             />
           )}
           {sorted.map((todo) => {
@@ -64,46 +65,44 @@ export function TodosExperience() {
             return (
               <article
                 key={todo.id}
-                className={`rounded-[22px] border border-line bg-white p-4 ${muted ? "opacity-60" : ""}`}
+                className={`pixel-panel bg-card p-4 ${muted ? "opacity-60" : ""}`}
               >
-                <p className="text-xs font-semibold uppercase tracking-wide text-tartan">
+                <p className="hud text-[8px] text-tartan">
                   {todo.type}
                   {todo.deadline ? ` · ${relativeDeadline(todo.deadline)}` : ""}
                 </p>
-                <h2 className="mt-1 text-base font-semibold">{todo.title}</h2>
-                {event && (
-                  <p className="text-sm text-muted">{event.title}</p>
-                )}
+                <h2 className="mt-1 text-base font-bold">{todo.title}</h2>
+                {event && <p className="text-sm text-muted">{event.title}</p>}
                 <div className="mt-3 flex flex-wrap gap-2">
                   {todo.registration_url && (
                     <a
                       href={todo.registration_url}
                       target="_blank"
                       rel="noreferrer"
-                      className="min-h-10 rounded-2xl bg-ink px-3 text-sm font-semibold leading-10 text-white"
+                      className="pixel-btn min-h-10 bg-ink px-3 text-sm leading-10 text-gold"
                     >
-                      Open registration
+                      OPEN FORM
                     </a>
                   )}
                   <Link
                     href="/"
-                    className="min-h-10 rounded-2xl bg-canvas px-3 text-sm font-semibold leading-10"
+                    className="pixel-btn min-h-10 bg-white px-3 text-sm leading-10"
                   >
-                    View map
+                    MAP
                   </Link>
                   <button
                     type="button"
                     onClick={() => update(todo.id, "DONE")}
-                    className="min-h-10 rounded-2xl bg-canvas px-3 text-sm font-semibold"
+                    className="pixel-btn min-h-10 bg-gold px-3 text-sm"
                   >
-                    Done
+                    DONE
                   </button>
                   <button
                     type="button"
                     onClick={() => update(todo.id, "DISMISSED")}
-                    className="min-h-10 rounded-2xl px-3 text-sm font-semibold text-muted"
+                    className="min-h-10 px-3 text-sm font-bold text-muted"
                   >
-                    Dismiss
+                    SKIP
                   </button>
                 </div>
               </article>

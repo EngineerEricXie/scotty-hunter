@@ -10,6 +10,8 @@ import { FoodConfidenceBadge } from "@/components/events/FoodConfidenceBadge";
 import { RegistrationBadge } from "@/components/events/RegistrationBadge";
 import { FloorSelector } from "@/components/map/FloorSelector";
 import { AvailabilityRow } from "@/components/checkin/AvailabilityRow";
+import { PhotoCheckIn } from "@/components/checkin/PhotoCheckIn";
+import { NowGoingBadge } from "@/components/live/NowGoingTicker";
 
 export function EventBottomSheet({
   event,
@@ -31,14 +33,14 @@ export function EventBottomSheet({
       className="pointer-events-auto absolute inset-x-0 bottom-0 z-30 mx-auto w-full max-w-lg px-3 pb-[108px] md:inset-x-auto md:right-4 md:top-24 md:bottom-auto md:w-[380px] md:px-0 md:pb-0"
       aria-label="Event details"
     >
-      <div className="overflow-hidden rounded-[28px] border border-line bg-white shadow-[0_18px_50px_rgba(28,28,30,0.16)]">
-        <div className="flex justify-center pt-2 md:hidden">
-          <span className="h-1 w-10 rounded-full bg-slate-200" />
-        </div>
-        <div className="max-h-[52vh] overflow-y-auto px-5 pb-5 pt-3 md:max-h-[72vh]">
+      <div className="pixel-panel overflow-hidden bg-card">
+        <div className="max-h-[58vh] overflow-y-auto px-4 pb-4 pt-3 md:max-h-[72vh]">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <p className="text-lg font-semibold leading-6">
+              <div className="mb-1 flex flex-wrap items-center gap-2">
+                <NowGoingBadge eventId={event.id} />
+              </div>
+              <p className="text-lg font-bold leading-6">
                 <span aria-hidden className="mr-1">
                   {foodEmoji(event)}
                 </span>
@@ -51,14 +53,14 @@ export function EventBottomSheet({
             <button
               type="button"
               onClick={onClose}
-              className="grid h-10 w-10 place-items-center rounded-full bg-canvas text-muted"
+              className="pixel-btn grid h-10 w-10 place-items-center bg-white"
               aria-label="Close event details"
             >
-              ✕
+              X
             </button>
           </div>
 
-          <p className="mt-3 text-sm text-ink">
+          <p className="mt-3 text-sm font-bold">
             {building?.name ?? "Location not resolved"}
             {event.room ? ` · ${event.room}` : ""}
             {event.floor ? ` · Floor ${event.floor}` : ""}
@@ -69,6 +71,7 @@ export function EventBottomSheet({
             <FoodConfidenceBadge
               status={event.food_status}
               confidence={event.food_confidence}
+              boosted={Boolean(event.boost_reasons?.length)}
             />
             <RegistrationBadge
               required={event.registration_required}
@@ -77,40 +80,52 @@ export function EventBottomSheet({
           </div>
 
           {event.food_status !== "NONE" && (
-            <blockquote className="mt-4 rounded-2xl bg-canvas px-4 py-3 text-sm leading-6">
-              <p className="font-semibold">
+            <blockquote className="mt-4 border-4 border-ink bg-[#fffaf0] px-3 py-3 text-sm leading-6">
+              <p className="font-bold">
                 {foodStatusLabel(event.food_status)} ·{" "}
-                {Math.round(event.food_confidence * 100)}% confidence
+                {Math.round(event.food_confidence * 100)}% probability
+                {event.base_confidence != null &&
+                event.base_confidence < event.food_confidence
+                  ? ` (was ${Math.round(event.base_confidence * 100)}%)`
+                  : ""}
               </p>
               <p className="mt-1 text-muted">
                 {event.food_evidence
                   ? `“${event.food_evidence}”`
                   : "No supporting quote was preserved."}
               </p>
+              {event.boost_reasons && event.boost_reasons.length > 0 && (
+                <p className="mt-2 text-xs font-bold text-sage">
+                  Boosted by: {event.boost_reasons.join(" · ")}
+                </p>
+              )}
             </blockquote>
           )}
 
           {event.food_types.length > 0 && (
-            <p className="mt-3 text-sm text-muted">
-              Food type: {event.food_types.join(", ")}
-            </p>
+            <p className="mt-3 text-sm text-muted">Food type: {event.food_types.join(", ")}</p>
           )}
 
           {event.registration_required && (
-            <div className="mt-4 rounded-2xl border border-tartan/20 bg-tartan/5 px-4 py-3 text-sm">
-              <p className="font-semibold text-tartan">
+            <div className="mt-4 border-4 border-tartan bg-tartan px-3 py-3 text-sm text-gold">
+              <p className="font-bold">
                 Register
                 {event.registration_deadline
                   ? ` by ${relativeDeadline(event.registration_deadline)}`
                   : ""}
               </p>
-              <p className="mt-1 text-muted">
+              <p className="mt-1 text-white/90">
                 ScottyBites never submits external forms for you.
               </p>
             </div>
           )}
 
-          <AvailabilityRow key={event.id} eventId={event.id} />
+          <AvailabilityRow key={event.id} eventId={event.id} title={event.title} buildingId={event.building_id} />
+          <PhotoCheckIn
+            eventId={event.id}
+            title={event.title}
+            buildingId={event.building_id}
+          />
           <FloorSelector buildingId={event.building_id} floor={event.floor} />
 
           <p className="mt-4 text-xs leading-5 text-muted">
@@ -122,25 +137,25 @@ export function EventBottomSheet({
             <button
               type="button"
               onClick={() => onAddToPlan(event)}
-              className="min-h-11 rounded-2xl bg-ink text-sm font-semibold text-white"
+              className="pixel-btn min-h-11 bg-ink text-sm text-gold"
             >
-              Add to Plan
+              ADD TO PLAN
             </button>
             {event.registration_url ? (
               <a
                 href={event.registration_url}
                 target="_blank"
                 rel="noreferrer"
-                className="grid min-h-11 place-items-center rounded-2xl bg-canvas text-sm font-semibold"
+                className="pixel-btn grid min-h-11 place-items-center bg-white text-sm"
               >
-                Register
+                REGISTER
               </a>
             ) : (
               <a
                 href={`/api/calendar?eventId=${event.id}`}
-                className="grid min-h-11 place-items-center rounded-2xl bg-canvas text-sm font-semibold"
+                className="pixel-btn grid min-h-11 place-items-center bg-white text-sm"
               >
-                Calendar .ics
+                .ICS
               </a>
             )}
           </div>
@@ -148,9 +163,9 @@ export function EventBottomSheet({
             <button
               type="button"
               onClick={() => onAddTodo(event)}
-              className="mt-2 min-h-11 w-full rounded-2xl border border-line text-sm font-semibold"
+              className="pixel-btn mt-2 min-h-11 w-full bg-white text-sm"
             >
-              Save RSVP To-Do
+              SAVE RSVP QUEST
             </button>
           )}
         </div>

@@ -26,7 +26,7 @@ Source registry
   → Zod validation
   → dedup
   → EventRepository (local fixtures default / Supabase scaffold)
-  → map · planner · to-dos · ICS
+  → map · Scotty pet · Food Dex · planner · to-dos · ICS
 ```
 
 Replaceable adapters:
@@ -37,7 +37,7 @@ Replaceable adapters:
 | `EventExtractor` | `HeuristicEventExtractor` | `LLMEventExtractor` |
 | `CalendarService` | `MockCalendarService` + ICS | `GoogleCalendarService` |
 | `FoodVisionService` | `MockFoodVisionService` | `RealVisionService` |
-| Map | MapLibre + OpenFreeMap | optional MapTiler/Mapbox token |
+| Map | Pixel campus map (default) + MapLibre/Carto GEO toggle | optional MapTiler/Mapbox token |
 
 ## Data sources
 

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getEventRepository } from "@/lib/db";
+import { applyCorpusBoost } from "@/lib/community/boost";
 import type { FoodStatus, MealType } from "@/lib/types";
 
 export async function GET(request: Request) {
@@ -18,15 +19,17 @@ export async function GET(request: Request) {
       .filter(Boolean) as MealType[] | undefined;
 
     const repo = getEventRepository();
-    const events = await repo.listEvents({
-      date,
-      start,
-      end,
-      building,
-      food_status,
-      meal,
-      include_none: includeNone,
-    });
+    const events = applyCorpusBoost(
+      await repo.listEvents({
+        date,
+        start,
+        end,
+        building,
+        food_status,
+        meal,
+        include_none: includeNone,
+      }),
+    );
 
     return NextResponse.json({ events, count: events.length });
   } catch (error) {

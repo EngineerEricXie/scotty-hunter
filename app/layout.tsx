@@ -1,15 +1,30 @@
 import type { Metadata, Viewport } from "next";
+import { Press_Start_2P, VT323 } from "next/font/google";
 import "./globals.css";
+
+const hud = Press_Start_2P({
+  weight: "400",
+  subsets: ["latin"],
+  variable: "--font-hud",
+  display: "swap",
+});
+
+const pixel = VT323({
+  weight: "400",
+  subsets: ["latin"],
+  variable: "--font-pixel",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: "ScottyBites",
   description:
-    "Never miss free food at CMU. Discover campus events, verify food evidence, and plan a free-meal itinerary.",
+    "Pixel campus free-food hunter for Carnegie Mellon. Raise Scotty, snap dishes, and never miss a table.",
   applicationName: "ScottyBites",
   appleWebApp: {
     capable: true,
     title: "ScottyBites",
-    statusBarStyle: "default",
+    statusBarStyle: "black-translucent",
   },
 };
 
@@ -18,7 +33,7 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   viewportFit: "cover",
-  themeColor: "#e8edf2",
+  themeColor: "#14261c",
 };
 
 export default function RootLayout({
@@ -28,7 +43,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className="min-h-dvh bg-canvas text-ink antialiased">
+      <body className={`${hud.variable} ${pixel.variable} min-h-dvh bg-canvas text-ink antialiased`}>
         {children}
       </body>
     </html>

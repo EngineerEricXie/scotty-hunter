@@ -9,8 +9,8 @@ export function RegistrationBadge({
 }) {
   if (!required && !deadline) return null;
   return (
-    <span className="inline-flex min-h-8 items-center rounded-full bg-tartan/10 px-3 text-xs font-semibold text-tartan">
-      {required ? "RSVP required" : "Deadline"}
+    <span className="inline-flex min-h-8 items-center border-4 border-ink bg-tartan px-2 text-xs font-bold text-gold">
+      {required ? "RSVP" : "DEADLINE"}
       {deadline ? ` · ${relativeDeadline(deadline)}` : ""}
     </span>
   );

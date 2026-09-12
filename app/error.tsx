@@ -8,17 +8,17 @@ export default function ErrorView({
 }) {
   return (
     <div className="grid min-h-dvh place-items-center bg-canvas px-6 text-center">
-      <div>
-        <p className="text-lg font-semibold">ScottyBites hit a snag</p>
-        <p className="mt-2 text-sm text-muted">
-          The map should still work from demo data after a refresh.
+      <div className="pixel-panel bg-card p-5">
+        <p className="hud text-[12px] leading-6">SNAG!</p>
+        <p className="mt-2 text-sm font-bold text-muted">
+          The pixel map still works from demo data after a refresh.
         </p>
         <button
           type="button"
           onClick={reset}
-          className="mt-4 min-h-11 rounded-2xl bg-ink px-4 text-sm font-semibold text-white"
+          className="pixel-btn mt-4 min-h-11 bg-ink px-4 text-sm font-bold text-gold"
         >
-          Try again
+          TRY AGAIN
         </button>
       </div>
     </div>

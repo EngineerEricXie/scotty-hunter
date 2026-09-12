@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getEventRepository } from "@/lib/db";
+import { applyCorpusBoost } from "@/lib/community/boost";
 import { getBuilding } from "@/lib/maps/buildings";
 import { walkingMinutesBetween } from "@/lib/planner/walking-time";
 
@@ -14,9 +15,12 @@ export async function GET(
     if (!event) {
       return NextResponse.json({ error: "Event not found." }, { status: 404 });
     }
+    const boosted = applyCorpusBoost(await repo.listEvents({ include_none: true })).find(
+      (item) => item.id === id,
+    );
     const building = getBuilding(event.building_id);
     return NextResponse.json({
-      event,
+      event: boosted ?? event,
       building,
       walking_from_ghc: walkingMinutesBetween("ghc", event.building_id),
     });

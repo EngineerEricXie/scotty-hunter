@@ -1,34 +1,34 @@
 import Link from "next/link";
-import { CalendarDays, Map, ListTodo, UserRound } from "lucide-react";
 
 const ITEMS = [
-  { href: "/", label: "Map", icon: Map },
-  { href: "/plan", label: "Plan", icon: CalendarDays },
-  { href: "/todos", label: "To-Dos", icon: ListTodo },
-  { href: "/profile", label: "Me", icon: UserRound },
+  { href: "/", label: "MAP", glyph: "▣" },
+  { href: "/plan", label: "PLAN", glyph: "▦" },
+  { href: "/scotty", label: "SCOTTY", glyph: "▼" },
+  { href: "/todos", label: "QUEST", glyph: "!" },
 ] as const;
 
 export function BottomNav({ current }: { current: string }) {
   return (
     <nav
       aria-label="Primary"
-      className="pointer-events-auto fixed inset-x-0 bottom-0 z-40 mx-auto max-w-lg px-3 pb-[max(12px,env(safe-area-inset-bottom))]"
+      className="pointer-events-auto fixed inset-x-0 bottom-0 z-40 mx-auto max-w-lg px-3 pb-[max(10px,env(safe-area-inset-bottom))]"
     >
-      <div className="flex items-center justify-around rounded-[22px] border border-line bg-white/92 px-2 py-2 shadow-[0_10px_40px_rgba(28,28,30,0.12)] backdrop-blur-md">
+      <div className="pixel-panel flex items-stretch justify-around bg-card px-1 py-1">
         {ITEMS.map((item) => {
-          const active = current === item.href;
-          const Icon = item.icon;
+          const active = current === item.href || (item.href === "/scotty" && current === "/profile");
           return (
             <Link
               key={item.href}
               href={item.href}
               aria-current={active ? "page" : undefined}
-              className={`flex min-h-11 min-w-14 flex-col items-center justify-center gap-0.5 rounded-2xl px-3 py-1 text-[11px] font-semibold ${
-                active ? "text-tartan" : "text-muted"
+              className={`flex min-h-12 min-w-16 flex-col items-center justify-center gap-0.5 px-2 text-[11px] font-bold ${
+                active ? "bg-ink text-gold" : "text-ink"
               }`}
             >
-              <Icon size={20} strokeWidth={active ? 2.4 : 1.8} aria-hidden />
-              {item.label}
+              <span aria-hidden className="hud text-[10px] leading-none">
+                {item.glyph}
+              </span>
+              <span className="hud text-[8px]">{item.label}</span>
             </Link>
           );
         })}

@@ -93,6 +93,8 @@ export interface Event {
   food_status: FoodStatus;
   food_types: FoodType[];
   food_confidence: number;
+  base_confidence?: number;
+  boost_reasons?: string[];
   food_evidence: string | null;
   registration_required: boolean;
   registration_url: string | null;

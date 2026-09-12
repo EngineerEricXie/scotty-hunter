@@ -28,19 +28,16 @@ export function FilterBar({
   return (
     <div className="space-y-2">
       <div className="flex gap-2 overflow-x-auto pb-1">
-        <Pill
-          active={filters.date === today}
-          onClick={() => onChange({ ...filters, date: today })}
-        >
-          Today
+        <Pill active={filters.date === today} onClick={() => onChange({ ...filters, date: today })}>
+          TODAY
         </Pill>
         <Pill
           active={filters.date === tomorrow}
           onClick={() => onChange({ ...filters, date: tomorrow })}
         >
-          Tomorrow
+          TOM
         </Pill>
-        <label className="inline-flex min-h-11 items-center rounded-full border border-line bg-white px-3 text-sm font-semibold shadow-sm">
+        <label className="pixel-chip inline-flex min-h-10 items-center bg-white px-2 text-sm font-bold">
           <span className="sr-only">Pick a date</span>
           <input
             type="date"
@@ -57,7 +54,7 @@ export function FilterBar({
             active={filters.meals.includes(meal)}
             onClick={() => toggleMeal(meal)}
           >
-            {meal[0].toUpperCase() + meal.slice(1)}
+            {meal.toUpperCase()}
           </Pill>
         ))}
       </div>
@@ -72,7 +69,7 @@ export function FilterBar({
             })
           }
         >
-          Explicit only
+          EXPLICIT
         </Pill>
         <Pill
           active={filters.includeLikely && !filters.explicitOnly}
@@ -84,7 +81,7 @@ export function FilterBar({
             })
           }
         >
-          Include likely
+          +LIKELY
         </Pill>
       </div>
     </div>
@@ -104,9 +101,8 @@ function Pill({
     <button
       type="button"
       onClick={onClick}
-      className={`inline-flex min-h-11 shrink-0 items-center rounded-full px-4 text-sm font-semibold shadow-sm ${
-        active ? "bg-ink text-white" : "border border-line bg-white text-ink"
-      }`}
+      data-on={active ? "true" : "false"}
+      className="pixel-chip inline-flex min-h-10 shrink-0 items-center bg-white px-3 text-xs font-bold"
     >
       {children}
     </button>

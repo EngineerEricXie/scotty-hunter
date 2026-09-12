@@ -3,11 +3,12 @@
 import { useEffect, useRef } from "react";
 import { Map as MapLibreMap, Marker, NavigationControl } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
-import { APP_CONFIG, CMU_MAP_CENTER } from "@/lib/config";
+import { CMU_MAP_CENTER } from "@/lib/config";
 import { getBuilding } from "@/lib/maps/buildings";
 import type { Event } from "@/lib/types";
 import { createFoodMarkerElement } from "@/components/map/FoodMarker";
 import { addBuildingLayer, highlightBuilding } from "@/components/map/BuildingLayer";
+import { isNowGoing } from "@/lib/scotty/state";
 
 const OSM_FALLBACK = {
   version: 8 as const,
@@ -46,27 +47,27 @@ export function CampusMap({
 
     const map = new MapLibreMap({
       container: containerRef.current,
-      style: APP_CONFIG.mapStyleUrl,
+      style: OSM_FALLBACK as never,
       center: [CMU_MAP_CENTER.longitude, CMU_MAP_CENTER.latitude],
       zoom: CMU_MAP_CENTER.zoom,
-      pitch: CMU_MAP_CENTER.pitch,
-      bearing: CMU_MAP_CENTER.bearing,
+      pitch: 0,
+      bearing: 0,
     });
-    map.addControl(new NavigationControl({ visualizePitch: true }), "bottom-right");
+    map.addControl(new NavigationControl({ visualizePitch: false }), "bottom-right");
     mapRef.current = map;
 
     const onLoad = () => {
+      map.resize();
       addBuildingLayer(map);
       renderMarkers();
     };
     map.on("load", onLoad);
-    map.once("error", () => {
-      if (!map.isStyleLoaded()) {
-        map.setStyle(OSM_FALLBACK as never);
-      }
-    });
+
+    const ro = new ResizeObserver(() => map.resize());
+    ro.observe(containerRef.current);
 
     return () => {
+      ro.disconnect();
       markersRef.current.forEach((marker) => marker.remove());
       markersRef.current = [];
       map.remove();
@@ -84,6 +85,7 @@ export function CampusMap({
       const building = getBuilding(event.building_id);
       if (!building) continue;
       const el = createFoodMarkerElement(event, event.id === selectedRef.current);
+      if (isNowGoing(event.id)) el.dataset.going = "true";
       el.addEventListener("click", (evt) => {
         evt.stopPropagation();
         onSelect(event);
@@ -104,8 +106,7 @@ export function CampusMap({
       if (building) {
         map.easeTo({
           center: [building.longitude, building.latitude],
-          zoom: Math.max(map.getZoom(), 16.6),
-          pitch: 52,
+          zoom: Math.max(map.getZoom(), 16.4),
           duration: 650,
         });
         highlightBuilding(map, building.id);
@@ -121,7 +122,7 @@ export function CampusMap({
       ref={containerRef}
       className="absolute inset-0 h-full w-full"
       role="application"
-      aria-label="Carnegie Mellon campus map"
+      aria-label="Geographic Carnegie Mellon campus map"
     />
   );
 }

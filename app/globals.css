@@ -2,21 +2,28 @@
 
 :root {
   color-scheme: light;
-  --canvas: #e8edf2;
-  --card: #ffffff;
-  --ink: #1c1c1e;
-  --muted: #6e6e73;
-  --line: rgba(28, 28, 30, 0.08);
-  --tartan: #c41230;
-  --tartan-soft: #e85d4c;
-  --sage: #2f6f4e;
-  --gold: #d4a017;
-  --shadow: 0 10px 40px rgba(28, 28, 30, 0.12);
-  --shadow-soft: 0 4px 18px rgba(28, 28, 30, 0.08);
+  --canvas: #14261c;
+  --sky: #7ec8e3;
+  --grass: #4fa64a;
+  --grass-dark: #3d8a3a;
+  --path: #d7b07a;
+  --card: #fff4d6;
+  --ink: #1b1224;
+  --muted: #5c4d63;
+  --line: #1b1224;
+  --tartan: #d62839;
+  --sage: #1f7a4d;
+  --gold: #f4d03f;
+  --shadow: 4px 4px 0 #1b1224;
+  --font-hud: "Press Start 2P", ui-monospace, monospace;
+  --font-pixel: "VT323", ui-monospace, monospace;
 }
 
 @theme inline {
   --color-canvas: var(--canvas);
+  --color-sky: var(--sky);
+  --color-grass: var(--grass);
+  --color-path: var(--path);
   --color-card: var(--card);
   --color-ink: var(--ink);
   --color-muted: var(--muted);
@@ -24,70 +31,190 @@
   --color-tartan: var(--tartan);
   --color-sage: var(--sage);
   --color-gold: var(--gold);
-  --font-sans: ui-rounded, "SF Pro Rounded", "Hiragino Maru Gothic ProN",
-    ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
-    sans-serif;
-  --radius-card: 22px;
-  --radius-pill: 999px;
+  --font-sans: var(--font-pixel);
+  --font-hud: var(--font-hud);
 }
 
 html,
 body {
-  height: 100%;
+  min-height: 100%;
   background: var(--canvas);
   color: var(--ink);
 }
 
 body {
-  font-family: var(--font-sans);
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
+  font-family: var(--font-pixel), ui-monospace, monospace;
+  font-size: 18px;
+  image-rendering: pixelated;
 }
 
 * {
   -webkit-tap-highlight-color: transparent;
 }
 
+.hud {
+  font-family: var(--font-hud), ui-monospace, monospace;
+  letter-spacing: 0.02em;
+  line-height: 1.7;
+}
+
+.pixel-panel {
+  background: var(--card);
+  color: var(--ink);
+  border: 4px solid var(--ink);
+  box-shadow: 6px 6px 0 var(--ink);
+}
+
+.pixel-btn {
+  border: 4px solid var(--ink);
+  box-shadow: 4px 4px 0 var(--ink);
+  font-family: var(--font-pixel), sans-serif;
+  font-weight: 700;
+  image-rendering: pixelated;
+}
+
+.pixel-btn:active {
+  transform: translate(3px, 3px);
+  box-shadow: 1px 1px 0 var(--ink);
+}
+
+.pixel-chip {
+  border: 3px solid var(--ink);
+  box-shadow: 3px 3px 0 var(--ink);
+  font-weight: 700;
+}
+
+.pixel-chip[data-on="true"] {
+  background: var(--ink);
+  color: var(--gold);
+}
+
+.now-going {
+  animation: now-going-blink 1.05s steps(2, jump-end) infinite;
+}
+
+@keyframes now-going-blink {
+  0%,
+  49% {
+    opacity: 1;
+  }
+  50%,
+  100% {
+    opacity: 0.35;
+  }
+}
+
+@keyframes scotty-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+@keyframes scotty-hungry {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-3px) rotate(-2deg);
+  }
+  75% {
+    transform: translateX(3px) rotate(2deg);
+  }
+}
+
+@keyframes scotty-eat {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.06) translateY(2px);
+  }
+}
+
+.scotty-idle {
+  animation: scotty-bob 1.4s steps(2, jump-end) infinite;
+}
+
+.scotty-hungry {
+  animation: scotty-hungry 0.5s steps(2, jump-end) infinite;
+}
+
+.scotty-eat {
+  animation: scotty-eat 0.28s steps(2, jump-end) infinite;
+}
+
+.pixel-flag {
+  transform-origin: left center;
+  animation: flag-wave 0.7s steps(2, jump-end) infinite;
+}
+
+@keyframes flag-wave {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  50% {
+    transform: rotate(8deg);
+  }
+}
+
+.campus-world {
+  background-color: #4fa64a;
+  background-image:
+    linear-gradient(90deg, #3d8a3a 50%, transparent 50%),
+    linear-gradient(#3d8a3a 50%, transparent 50%);
+  background-size: 24px 24px;
+}
+
 .maplibregl-ctrl-attrib {
-  font-size: 10px;
+  font-size: 9px;
 }
 
 .maplibregl-ctrl-group {
-  border-radius: 14px !important;
-  overflow: hidden;
-  box-shadow: var(--shadow-soft) !important;
+  border: 3px solid #1b1224 !important;
+  border-radius: 0 !important;
+  box-shadow: 3px 3px 0 #1b1224 !important;
 }
 
 .food-marker {
   display: flex;
   align-items: center;
   gap: 4px;
-  padding: 6px 10px;
-  border: 0;
-  border-radius: 999px;
-  background: #fff;
-  box-shadow: 0 6px 18px rgba(28, 28, 30, 0.16);
-  font: 600 13px/1 var(--font-sans);
+  padding: 5px 8px;
+  border: 3px solid #1b1224;
+  border-radius: 0;
+  background: #fff4d6;
+  box-shadow: 3px 3px 0 #1b1224;
+  font: 700 12px/1 var(--font-pixel);
   color: var(--ink);
   cursor: pointer;
-  transform: translateY(-2px);
 }
 
 .food-marker[data-status="LIKELY"] {
-  background: #fff8ee;
+  background: #ffe08a;
 }
 
 .food-marker[data-status="POSSIBLE"] {
-  background: #f4f4f6;
+  background: #e8e0d0;
 }
 
 .food-marker[data-selected="true"] {
-  outline: 2px solid var(--tartan);
-  transform: translateY(-4px) scale(1.06);
+  background: #f4d03f;
+  transform: translateY(-4px);
+}
+
+.food-marker[data-going="true"] {
+  background: #d62839;
+  color: #fff4d6;
 }
 
 .food-marker .hour {
-  color: var(--muted);
   font-variant-numeric: tabular-nums;
 }
 
