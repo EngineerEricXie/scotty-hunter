@@ -10,7 +10,6 @@ import { createFoodMarkerElement, createStartMarkerElement } from "@/components/
 import { addBuildingLayer, highlightBuilding } from "@/components/map/BuildingLayer";
 import { ScottyWanderer } from "@/components/map/ScottyWanderer";
 import { CMU_CAMPUS_RING } from "@/lib/maps/campus-mask";
-import { isNowGoing } from "@/lib/scotty/state";
 import {
   clusterEvents,
   clusterHourLabel,
@@ -18,6 +17,10 @@ import {
 } from "@/lib/maps/cluster-events";
 import { mealStopByEventId, mealRouteDrawCoordinates, type MealRouteStop } from "@/lib/maps/meal-route";
 import { addFootwayLayer } from "@/lib/maps/road-graph";
+import { VIEWPORT_SYNC_EVENT } from "@/lib/ui/viewport-sync";
+
+const NO_ROUTE_STOPS: MealRouteStop[] = [];
+const NO_IDS: string[] = [];
 
 const OSM_FALLBACK = {
   version: 8 as const,
@@ -37,9 +40,10 @@ const OSM_FALLBACK = {
 export function CampusMap({
   events,
   selectedId,
-  plannedIds = [],
+  plannedIds = NO_IDS,
   showRoute = false,
-  routeStops = [],
+  routeStops = NO_ROUTE_STOPS,
+  goingEventIds = NO_IDS,
   onOpen,
   onScottyClick,
 }: {
@@ -48,6 +52,7 @@ export function CampusMap({
   plannedIds?: string[];
   showRoute?: boolean;
   routeStops?: MealRouteStop[];
+  goingEventIds?: string[];
   onOpen: (events: Event[]) => void;
   onScottyClick?: () => void;
 }) {
@@ -60,6 +65,7 @@ export function CampusMap({
   const plannedRef = useRef(plannedIds);
   const showRouteRef = useRef(showRoute);
   const routeStopsRef = useRef(routeStops);
+  const goingEventIdsRef = useRef(goingEventIds);
   const onOpenRef = useRef(onOpen);
   const [mapReady, setMapReady] = useState(false);
   const lureBuildingIds = useMemo(
@@ -72,6 +78,7 @@ export function CampusMap({
   plannedRef.current = plannedIds;
   showRouteRef.current = showRoute;
   routeStopsRef.current = routeStops;
+  goingEventIdsRef.current = goingEventIds;
   onOpenRef.current = onOpen;
 
   useEffect(() => {
@@ -144,6 +151,18 @@ export function CampusMap({
     const ro = new ResizeObserver(() => map.resize());
     ro.observe(containerRef.current);
 
+    const syncViewport = () => map.resize();
+    const visualViewport = window.visualViewport;
+    visualViewport?.addEventListener("resize", syncViewport);
+    visualViewport?.addEventListener("scroll", syncViewport);
+    window.addEventListener("pageshow", syncViewport);
+    window.addEventListener("orientationchange", syncViewport);
+    window.addEventListener(VIEWPORT_SYNC_EVENT, syncViewport);
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") map.resize();
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+
     return () => {
       window.clearTimeout(fallbackTimer);
       map.off("data", onTile);
@@ -151,6 +170,12 @@ export function CampusMap({
       map.off("style.load", attachOverlays);
       map.off("moveend", renderMarkers);
       ro.disconnect();
+      visualViewport?.removeEventListener("resize", syncViewport);
+      visualViewport?.removeEventListener("scroll", syncViewport);
+      window.removeEventListener("pageshow", syncViewport);
+      window.removeEventListener("orientationchange", syncViewport);
+      window.removeEventListener(VIEWPORT_SYNC_EVENT, syncViewport);
+      document.removeEventListener("visibilitychange", onVisibility);
       clearMarkers();
       map.remove();
       mapRef.current = null;
@@ -190,7 +215,9 @@ export function CampusMap({
         stopNumber:
           showRouteRef.current && stopEvent ? stopByEvent.get(stopEvent.id) : undefined,
       });
-      if (cluster.events.some((event) => isNowGoing(event.id))) el.dataset.going = "true";
+      if (cluster.events.some((event) => goingEventIdsRef.current.includes(event.id))) {
+        el.dataset.going = "true";
+      }
       el.addEventListener("click", (evt) => {
         evt.stopPropagation();
         onOpenRef.current(cluster.events);
@@ -232,7 +259,7 @@ export function CampusMap({
       highlightBuilding(map, null);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [events, selectedId, plannedIds, showRoute, routeStops]);
+  }, [events, selectedId, plannedIds, showRoute, routeStops, goingEventIds]);
 
   return (
     <div className="absolute inset-0" role="application" aria-label="Carnegie Mellon campus map">
@@ -241,7 +268,7 @@ export function CampusMap({
         <>
           <CampusWashOverlay
             map={mapRef.current}
-            routeStops={showRoute ? routeStops : []}
+            routeStops={showRoute ? routeStops : NO_ROUTE_STOPS}
           />
           <ScottyWanderer
             map={mapRef.current}
@@ -289,12 +316,18 @@ function CampusWashOverlay({
           .join(" ");
       const routeCoords = mealRouteDrawCoordinates(routeStops);
       const route = routeCoords.length >= 2 ? projectLine(routeCoords) : "";
-      setFrame({
-        w,
-        h,
-        wash: `M0 0H${w}V${h}H0Z ${hole}`,
-        outline: hole,
-        route,
+      const wash = `M0 0H${w}V${h}H0Z ${hole}`;
+      setFrame((prev) => {
+        if (
+          prev.w === w &&
+          prev.h === h &&
+          prev.wash === wash &&
+          prev.outline === hole &&
+          prev.route === route
+        ) {
+          return prev;
+        }
+        return { w, h, wash, outline: hole, route };
       });
     };
     redraw();

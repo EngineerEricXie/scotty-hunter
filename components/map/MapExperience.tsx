@@ -27,6 +27,7 @@ import { prefetchCampusEvents } from "@/lib/events-client";
 import { APP_CONFIG } from "@/lib/config";
 import { applyCorpusBoost } from "@/lib/community/boost";
 import { liveNowGoing, loadScotty, onScottyChange } from "@/lib/scotty/state";
+import { VIEWPORT_SYNC_EVENT, syncAppViewportVars } from "@/lib/ui/viewport-sync";
 
 const CampusMap = dynamic(
   () => import("@/components/map/CampusMap").then((mod) => mod.CampusMap),
@@ -155,6 +156,38 @@ export function MapExperience() {
   }
 
   useEffect(() => {
+    const html = document.documentElement;
+    const body = document.body;
+    const prevHtmlOverflow = html.style.overflow;
+    const prevBodyOverflow = body.style.overflow;
+    html.style.overflow = "hidden";
+    body.style.overflow = "hidden";
+    syncAppViewportVars();
+    const viewport = window.visualViewport;
+    viewport?.addEventListener("resize", syncAppViewportVars);
+    viewport?.addEventListener("scroll", syncAppViewportVars);
+    window.addEventListener("resize", syncAppViewportVars);
+    window.addEventListener("pageshow", syncAppViewportVars);
+    window.addEventListener("orientationchange", syncAppViewportVars);
+    window.addEventListener(VIEWPORT_SYNC_EVENT, syncAppViewportVars);
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") syncAppViewportVars();
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      html.style.overflow = prevHtmlOverflow;
+      body.style.overflow = prevBodyOverflow;
+      viewport?.removeEventListener("resize", syncAppViewportVars);
+      viewport?.removeEventListener("scroll", syncAppViewportVars);
+      window.removeEventListener("resize", syncAppViewportVars);
+      window.removeEventListener("pageshow", syncAppViewportVars);
+      window.removeEventListener("orientationchange", syncAppViewportVars);
+      window.removeEventListener(VIEWPORT_SYNC_EVENT, syncAppViewportVars);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, []);
+
+  useEffect(() => {
     if (panel !== "plan") {
       const ids = loadLastPlanEventIds();
       setPlannedIds(ids);
@@ -266,6 +299,7 @@ export function MapExperience() {
     });
   }, [visible, plannedIds, filters.date]);
   const canShowRoute = routeStops.length >= 2;
+  const goingEventIds = useMemo(() => pings.map((ping) => ping.eventId), [pings]);
 
   function openEvents(group: Event[]) {
     if (group.length === 1 && group[0]) {
@@ -278,7 +312,10 @@ export function MapExperience() {
   }
 
   return (
-    <div className="relative h-dvh w-full overflow-hidden bg-canvas">
+    <div
+      className="fixed inset-x-0 w-full overflow-hidden bg-canvas"
+      style={{ top: "var(--app-offset-top, 0px)", height: "var(--app-height, 100dvh)" }}
+    >
       <PressStartGate />
       <div className={`absolute inset-0 ${panel ? "pointer-events-none" : ""}`}>
         <CampusMap
@@ -287,6 +324,7 @@ export function MapExperience() {
           plannedIds={plannedIds}
           showRoute={showRoute && canShowRoute}
           routeStops={routeStops}
+          goingEventIds={goingEventIds}
           onOpen={openEvents}
           onScottyClick={() => openPanel("scotty")}
         />
@@ -412,6 +450,7 @@ export function MapExperience() {
       </MapPanelOverlay>
 
       <BottomNav
+        contained
         current={
           panel === "plan"
             ? "/plan"

@@ -2,6 +2,8 @@
 
 :root {
   color-scheme: light;
+  --app-height: 100dvh;
+  --app-offset-top: 0px;
   --canvas: #14261c;
   --sky: #7ec8e3;
   --grass: #4fa64a;

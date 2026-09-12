@@ -11,6 +11,7 @@ import {
 import { ATLAS_BY_ID } from "@/lib/scotty/atlas";
 import { getHiddenMenu, type HiddenMenu, type HiddenMenuDish } from "@/lib/vision/hidden-menu";
 import { APP_RESET_EVENT } from "@/lib/storage/local-state";
+import { scheduleViewportSync } from "@/lib/ui/viewport-sync";
 
 export function PhotoCheckIn({
   eventId,
@@ -75,6 +76,7 @@ export function PhotoCheckIn({
   }, []);
 
   async function onFile(file: File | null) {
+    scheduleViewportSync();
     if (!file) return;
     setResult(null);
     setJustUnlocked(false);
@@ -142,6 +144,7 @@ export function PhotoCheckIn({
       }
     } finally {
       setBusy(false);
+      scheduleViewportSync();
     }
   }
 
@@ -174,15 +177,9 @@ export function PhotoCheckIn({
           />
         )}
 
-        <label className="pixel-btn mt-3 flex min-h-11 items-center justify-center bg-gold text-sm">
+        <label className="pixel-btn relative mt-3 flex min-h-11 items-center justify-center overflow-hidden bg-gold text-sm">
           {busy ? "SCANNING TABLE…" : unlocked ? "SNAP AGAIN" : "UPLOAD PHOTO TO UNLOCK"}
-          <input
-            type="file"
-            accept="image/*"
-            capture="environment"
-            className="sr-only"
-            onChange={(e) => onFile(e.target.files?.[0] ?? null)}
-          />
+          <PhotoFileInput busy={busy} onFile={onFile} />
         </label>
         {result && <p className="mt-2 text-sm font-bold text-sage">{result}</p>}
         {atlasIds.length > 0 && unlocked && (
@@ -206,15 +203,9 @@ export function PhotoCheckIn({
           className="mt-3 h-24 w-full border-4 border-ink object-cover"
         />
       )}
-      <label className="pixel-btn mt-3 flex min-h-11 items-center justify-center bg-gold text-sm">
+      <label className="pixel-btn relative mt-3 flex min-h-11 items-center justify-center overflow-hidden bg-gold text-sm">
         {busy ? "SCANNING…" : "TAKE / UPLOAD PHOTO"}
-        <input
-          type="file"
-          accept="image/*"
-          capture="environment"
-          className="sr-only"
-          onChange={(e) => onFile(e.target.files?.[0] ?? null)}
-        />
+        <PhotoFileInput busy={busy} onFile={onFile} />
       </label>
       {labels.length > 0 && (
         <div className="mt-3">
@@ -233,6 +224,27 @@ export function PhotoCheckIn({
       )}
       {result && <p className="mt-2 text-sm font-bold text-sage">{result}</p>}
     </section>
+  );
+}
+
+function PhotoFileInput({
+  busy,
+  onFile,
+}: {
+  busy: boolean;
+  onFile: (file: File | null) => void;
+}) {
+  return (
+    <input
+      type="file"
+      accept="image/*"
+      capture="environment"
+      disabled={busy}
+      className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+      style={{ fontSize: 16 }}
+      onChange={(event) => void onFile(event.target.files?.[0] ?? null)}
+      onBlur={() => scheduleViewportSync()}
+    />
   );
 }
 

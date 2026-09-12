@@ -11,12 +11,14 @@ const ITEMS = [
 
 export function BottomNav({
   current,
+  contained,
   onSelectMap,
   onSelectPlan,
   onSelectScotty,
   onSelectQuest,
 }: {
   current: string;
+  contained?: boolean;
   onSelectMap?: () => void;
   onSelectPlan?: () => void;
   onSelectScotty?: () => void;
@@ -27,7 +29,9 @@ export function BottomNav({
   return (
     <nav
       aria-label="Primary"
-      className="pointer-events-auto fixed inset-x-0 bottom-0 z-40 mx-auto max-w-lg px-3 pb-[max(10px,env(safe-area-inset-bottom))]"
+      className={`pointer-events-auto inset-x-0 bottom-0 z-40 mx-auto max-w-lg px-3 pb-[max(10px,env(safe-area-inset-bottom))] ${
+        contained ? "absolute" : "fixed"
+      }`}
     >
       <div className="pixel-panel flex items-stretch justify-around bg-card px-1 py-1">
         {ITEMS.map((item) => {

@@ -220,17 +220,18 @@ function demoLivePings(now: number): NowGoingPing[] {
     .filter((ping) => pingIsHappening(ping, now));
 }
 
+function nowGoingFingerprint(pings: NowGoingPing[]): string {
+  return pings
+    .map((ping) => `${ping.id}:${ping.eventId}:${ping.kind}:${ping.startTime ?? ""}:${ping.endTime ?? ""}`)
+    .join("|");
+}
+
 function syncDemoNowGoing(state: ScottyState): ScottyState {
   if (!APP_CONFIG.demoMode) return state;
   const live = demoLivePings(demoNowMs());
   const kept = state.nowGoing.filter((ping) => ping.kind !== "demo");
   const next = [...live, ...kept];
-  const same =
-    next.length === state.nowGoing.length &&
-    next.every(
-      (ping, index) => ping.id === state.nowGoing[index]?.id && ping.at === state.nowGoing[index]?.at,
-    );
-  if (same) return state;
+  if (nowGoingFingerprint(next) === nowGoingFingerprint(state.nowGoing)) return state;
   const synced = { ...state, nowGoing: next, updatedAt: new Date(demoNowMs()).toISOString() };
   write(synced);
   return synced;
