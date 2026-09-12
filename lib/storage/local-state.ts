@@ -4,7 +4,7 @@ import type {
   Todo,
   UserPreference,
 } from "@/lib/types";
-import { demoNowMs } from "@/lib/demo-clock";
+import { demoNowMs, disableDemoClock } from "@/lib/demo-clock";
 
 const PREF_KEY = "scottybites:preferences";
 const TODO_KEY = "scottybites:todos";
@@ -132,13 +132,30 @@ export function saveLastPlanEventIds(ids: string[]) {
   writeJson(LAST_PLAN_KEY, ids);
 }
 
+export function clearLastPlanEventIds() {
+  saveLastPlanEventIds([]);
+}
+
 export function loadLastPlanEventIds(): string[] {
   return readJson<string[]>(LAST_PLAN_KEY, []);
 }
 
-export function seedDemoAvailability() {
+const LOCAL_KEYS = [PREF_KEY, TODO_KEY, AVAIL_KEY, POINTS_KEY, CHECKIN_KEY, LAST_PLAN_KEY];
+
+export const APP_RESET_EVENT = "scottybites:reset";
+
+/** Wipe planner, todos, check-ins, and scores back to a fresh demo install. */
+export function resetLocalAppData() {
   if (typeof window === "undefined") return;
-  if (window.localStorage.getItem(AVAIL_KEY)) return;
+  for (const key of LOCAL_KEYS) window.localStorage.removeItem(key);
+  disableDemoClock();
+  seedDemoAvailability();
+  window.dispatchEvent(new Event(APP_RESET_EVENT));
+}
+
+export function seedDemoAvailability(force = false) {
+  if (typeof window === "undefined") return;
+  if (!force && window.localStorage.getItem(AVAIL_KEY)) return;
   const now = demoNowMs();
   writeJson(AVAIL_KEY, [
     {

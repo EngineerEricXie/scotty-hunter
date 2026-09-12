@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { parsePreferenceUtterance } from "@/lib/personalization/parse-utterance";
 import { DEFAULT_PREFERENCES } from "@/lib/storage/local-state";
-import { hasOpenAiCompatibleCredentials } from "@/lib/llm/chat";
+import { getPreferenceAgentMeta } from "@/lib/llm/chat";
 import type { UserPreference } from "@/lib/types";
 
 const BodySchema = z.object({
@@ -38,7 +38,10 @@ export async function POST(request: Request) {
 }
 
 export async function GET() {
+  const agent = getPreferenceAgentMeta();
   return NextResponse.json({
-    agent_ready: hasOpenAiCompatibleCredentials(),
+    agent_ready: agent.ready,
+    provider: agent.provider,
+    model: agent.model,
   });
 }

@@ -2,7 +2,7 @@ import { applyPreferencePatch, heuristicPreferencePatch } from "@/lib/personaliz
 import type { UserPreference } from "@/lib/types";
 
 export const DEMO_PERSONA_UTTERANCE =
-  "I'm vegetarian, like pizza and Asian food, on campus Monday/Wednesday/Friday and Saturday for lunch and dinner, walk at most 12 minutes, and I'm willing to RSVP.";
+  "I'm vegetarian, like pizza and Asian food, on campus Monday/Wednesday/Friday and Saturday for lunch, afternoon snacks, and dinner, walk at most 12 minutes, and I'm willing to RSVP.";
 
 export function applyDemoPersona(current: UserPreference): UserPreference {
   const patch = heuristicPreferencePatch(DEMO_PERSONA_UTTERANCE);

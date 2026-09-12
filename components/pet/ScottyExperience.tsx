@@ -7,6 +7,7 @@ import { StatusBar } from "@/components/ui/PressStart";
 import { ScottySprite } from "@/components/pet/ScottySprite";
 import { PhotoCheckIn } from "@/components/checkin/PhotoCheckIn";
 import { ATLAS_SPECIES } from "@/lib/scotty/atlas";
+import { APP_RESET_EVENT } from "@/lib/storage/local-state";
 import {
   atlasProgress,
   feedTreat,
@@ -63,7 +64,17 @@ export function ScottyExperience({
 
   useEffect(() => {
     const refresh = () => setState(loadScotty());
-    return onScottyChange(refresh);
+    const onReset = () => {
+      setTreatNote("");
+      setAction("idle");
+      refresh();
+    };
+    const unsub = onScottyChange(refresh);
+    window.addEventListener(APP_RESET_EVENT, onReset);
+    return () => {
+      unsub();
+      window.removeEventListener(APP_RESET_EVENT, onReset);
+    };
   }, []);
 
   const mood = scottyMood(state);

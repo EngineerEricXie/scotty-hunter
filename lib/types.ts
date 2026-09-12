@@ -240,6 +240,7 @@ export interface PlannerRequest {
   ideal_walking_minutes?: number;
   campus_days?: Weekday[];
   mode?: "day" | "week";
+  demo_clock?: boolean;
 }
 
 export interface PersonalizedEventScore {

@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { getHiddenMenu, hasHiddenMenu, hiddenMenuDietaryTags } from "@/lib/vision/hidden-menu";
-import { resolveVisionLabels } from "@/lib/vision/food-vision";
+import {
+  parseVisionPayload,
+  resolveVisionLabels,
+  revealHiddenMenuFromVision,
+} from "@/lib/vision/food-vision";
 import { matchAtlasIds } from "@/lib/scotty/atlas";
 
 describe("hidden menus", () => {
@@ -43,5 +47,30 @@ describe("hidden menus", () => {
     });
     expect(resolved.menu).toBeNull();
     expect(resolved.labels).toEqual(["Bagels", "Coffee"]);
+  });
+});
+
+describe("Grok vision payload", () => {
+  it("reads labels, confidence, and food_table", () => {
+    expect(
+      parseVisionPayload({
+        labels: ["Cheese pizza", "  ", "Mixed greens"],
+        confidence: 0.88,
+        food_table: true,
+      }),
+    ).toEqual({
+      labels: ["Cheese pizza", "Mixed greens"],
+      confidence: 0.88,
+      foodTable: true,
+    });
+  });
+
+  it("unlocks a hidden menu when Grok sees a food table", () => {
+    const menu = revealHiddenMenuFromVision("hackcmu-2026-saturday-lunch", ["pizza"], true);
+    expect(menu?.eventId).toBe("hackcmu-2026-saturday-lunch");
+  });
+
+  it("does not unlock a hidden menu from event id alone", () => {
+    expect(revealHiddenMenuFromVision("hackcmu-2026-saturday-lunch", ["hallway"], false)).toBeNull();
   });
 });

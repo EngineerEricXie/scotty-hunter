@@ -8,7 +8,21 @@ interface ChatMessage {
 }
 
 export function hasOpenAiCompatibleCredentials(): boolean {
-  return Boolean(SERVER_CONFIG.openaiApiKey);
+  return Boolean(SERVER_CONFIG.grokApiKey || SERVER_CONFIG.openaiApiKey);
+}
+
+export function getPreferenceAgentMeta(): {
+  ready: boolean;
+  provider: "grok" | "openai" | null;
+  model: string | null;
+} {
+  if (SERVER_CONFIG.grokApiKey) {
+    return { ready: true, provider: "grok", model: SERVER_CONFIG.grokModel };
+  }
+  if (SERVER_CONFIG.openaiApiKey) {
+    return { ready: true, provider: "openai", model: SERVER_CONFIG.openaiModel };
+  }
+  return { ready: false, provider: null, model: null };
 }
 
 function chatCompletionsUrl(): string {
@@ -260,4 +274,134 @@ async function postChat(
     choices?: { message?: ChatMessage }[];
   };
   return json.choices?.[0]?.message;
+}
+
+type GrokContentPart =
+  | { type: "text"; text: string }
+  | { type: "image_url"; image_url: { url: string; detail?: "auto" | "low" | "high" } };
+
+async function jsonFromGrok(input: {
+  model: string;
+  system: string;
+  user: string | GrokContentPart[];
+  temperature?: number;
+  maxTokens?: number;
+}): Promise<unknown> {
+  const first = await postGrokChat(input);
+  try {
+    return structuredJsonFromMessage(first);
+  } catch (firstError) {
+    const draft = textFromChatMessage(first).replace(/\s+/g, " ").slice(0, 2500);
+    const second = await postGrokChat({
+      ...input,
+      system: `${input.system}\nReply with a single JSON object only. First character must be "{". No markdown.`,
+      maxTokens: Math.min(input.maxTokens ?? 1024, 1024),
+    });
+    try {
+      return structuredJsonFromMessage(second);
+    } catch (secondError) {
+      const preview = draft.slice(0, 220);
+      const err = secondError instanceof Error ? secondError : firstError;
+      throw new Error(
+        err instanceof Error
+          ? `${err.message}${preview ? ` · ${preview}` : ""}`
+          : "Grok returned non-JSON content",
+      );
+    }
+  }
+}
+
+async function postGrokChat(input: {
+  model: string;
+  system: string;
+  user: string | GrokContentPart[];
+  temperature?: number;
+  maxTokens?: number;
+}): Promise<ChatMessage | undefined> {
+  if (!SERVER_CONFIG.grokApiKey) {
+    throw new Error("Missing GROK_API.");
+  }
+
+  const url = `${SERVER_CONFIG.grokBaseUrl.replace(/\/+$/, "")}/chat/completions`;
+  const messages = [
+    { role: "system", content: input.system },
+    { role: "user", content: input.user },
+  ];
+  const attempts: Array<Record<string, unknown>> = [
+    {
+      model: input.model,
+      temperature: input.temperature ?? 0,
+      max_tokens: input.maxTokens ?? 2048,
+      reasoning_effort: "low",
+      response_format: { type: "json_object" },
+      messages,
+    },
+    {
+      model: input.model,
+      temperature: input.temperature ?? 0,
+      max_tokens: input.maxTokens ?? 2048,
+      messages,
+    },
+  ];
+
+  let lastError = "Grok request failed.";
+  for (const body of attempts) {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${SERVER_CONFIG.grokApiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+    });
+    const raw = await res.text();
+    if (res.ok) {
+      const json = JSON.parse(raw) as { choices?: { message?: ChatMessage }[] };
+      return json.choices?.[0]?.message;
+    }
+    lastError = `Grok HTTP ${res.status}: ${raw.slice(0, 300)}`;
+    if (res.status !== 400) break;
+  }
+  throw new Error(lastError);
+}
+
+/** Preference parsing: Grok first, then OPENAI_* (IFM / OpenAI). */
+export async function completeAgentJson(input: {
+  system: string;
+  user: string;
+  temperature?: number;
+  maxTokens?: number;
+  reasoningEffort?: "low" | "medium" | "high";
+}): Promise<unknown> {
+  if (SERVER_CONFIG.grokApiKey) {
+    return jsonFromGrok({
+      model: SERVER_CONFIG.grokModel,
+      system: input.system,
+      user: input.user,
+      temperature: input.temperature,
+      maxTokens: input.maxTokens ?? 2048,
+    });
+  }
+  return completeOpenAiJson(input);
+}
+
+export async function completeGrokVisionJson(input: {
+  system: string;
+  user: string;
+  imageDataUrl: string;
+  temperature?: number;
+}): Promise<unknown> {
+  if (!SERVER_CONFIG.grokApiKey) {
+    throw new Error("Missing GROK_API.");
+  }
+  return jsonFromGrok({
+    model: SERVER_CONFIG.grokVisionModel,
+    system: input.system,
+    user: [
+      { type: "text", text: input.user },
+      { type: "image_url", image_url: { url: input.imageDataUrl, detail: "high" } },
+    ],
+    temperature: input.temperature,
+    maxTokens: 1024,
+  });
 }

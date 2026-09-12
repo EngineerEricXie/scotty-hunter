@@ -32,6 +32,10 @@ function readServer(name: string, fallback = ""): string {
 
 export const SERVER_CONFIG = {
   extractionProvider: readServer("EXTRACTION_PROVIDER", "heuristic"),
+  grokApiKey: readServer("GROK_API") || readServer("XAI_API_KEY"),
+  grokBaseUrl: readServer("GROK_BASE_URL", "https://api.x.ai/v1"),
+  grokModel: readServer("GROK_MODEL", "grok-4.6"),
+  grokVisionModel: readServer("GROK_VISION_MODEL", "grok-4.6"),
   openaiApiKey: readServer("OPENAI_API_KEY"),
   openaiBaseUrl: readServer("OPENAI_BASE_URL", "https://api.openai.com/v1"),
   openaiModel: readServer("OPENAI_MODEL", "gpt-4.1-mini"),
@@ -46,6 +50,10 @@ export const SERVER_CONFIG = {
   mapboxToken: process.env.MAPBOX_TOKEN ?? "",
   maptilerApiKey: process.env.MAPTILER_API_KEY ?? "",
 } as const;
+
+export function hasGrokCredentials(): boolean {
+  return Boolean(SERVER_CONFIG.grokApiKey);
+}
 
 export function hasLlmCredentials(): boolean {
   return Boolean(

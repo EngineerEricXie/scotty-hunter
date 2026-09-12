@@ -29,6 +29,7 @@ describe("preference utterance parser", () => {
     expect(next.preferred_cuisines).toContain("Asian");
     expect(next.campus_days).toEqual(["monday", "wednesday", "friday", "saturday"]);
     expect(next.wants_lunch).toBe(true);
+    expect(next.wants_snacks).toBe(true);
     expect(next.wants_dinner).toBe(true);
     expect(next.max_walking_minutes).toBe(12);
     expect(next.willing_to_rsvp).toBe("yes");

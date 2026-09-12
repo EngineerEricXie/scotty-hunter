@@ -1,5 +1,5 @@
 import { SERVER_CONFIG } from "@/lib/config";
-import { completeOpenAiJson, hasOpenAiCompatibleCredentials } from "@/lib/llm/chat";
+import { completeAgentJson, getPreferenceAgentMeta } from "@/lib/llm/chat";
 import {
   applyPreferencePatch,
   heuristicPreferencePatch,
@@ -34,16 +34,17 @@ export async function parsePreferenceUtterance(input: {
     throw new Error("Say what you eat, when you are on campus, and how far you will walk.");
   }
 
-  if (hasOpenAiCompatibleCredentials()) {
+  const agent = getPreferenceAgentMeta();
+  if (agent.ready) {
     try {
-      const raw = await completeOpenAiJson({
+      const raw = await completeAgentJson({
         system: SYSTEM,
         user: [
           `Current preferences JSON:\n${JSON.stringify(snapshot(input.current))}`,
           `Utterance:\n${utterance}`,
           "Output one JSON object now, not an array.",
         ].join("\n\n"),
-        maxTokens: 8192,
+        maxTokens: 2048,
         reasoningEffort: "low",
       });
       const payload = unwrapPreferencePayload(raw);
@@ -80,7 +81,9 @@ export async function parsePreferenceUtterance(input: {
     preferences,
     summary: fallback.summary,
     source: "heuristic",
-    warning: `No OPENAI_API_KEY. Local parser used. Set OPENAI_BASE_URL=${SERVER_CONFIG.openaiBaseUrl} plus a key to use the agent.`,
+    warning: SERVER_CONFIG.grokApiKey
+      ? "Grok is configured but was not used."
+      : "No GROK_API. Local parser used. Add GROK_API to .env.local to parse preferences with Grok.",
   };
 }
 

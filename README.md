@@ -36,7 +36,7 @@ Replaceable adapters:
 | `EventRepository` | `LocalFixtureEventRepository` | `SupabaseEventRepository` |
 | `EventExtractor` | `HeuristicEventExtractor` | `LLMEventExtractor` |
 | `CalendarService` | `MockCalendarService` + ICS | `GoogleCalendarService` |
-| `FoodVisionService` | `MockFoodVisionService` | `RealVisionService` |
+| `FoodVisionService` | `MockFoodVisionService` | `GrokFoodVisionService` (`GROK_API`) |
 | Map | Pixel campus map (default) + MapLibre/Carto GEO toggle | optional MapTiler/Mapbox token |
 
 ## Data sources
@@ -62,7 +62,9 @@ Copy `.env.example`. All keys are optional. Defaults already run the local demo.
 | `NEXT_PUBLIC_DEMO_MODE` | Force fixture repository (default `true`) |
 | `NEXT_PUBLIC_DEMO_DATE` | Calendar day labeled “Today” (default `2026-09-12`) |
 | `NEXT_PUBLIC_MAP_STYLE_URL` | MapLibre style (default OpenFreeMap liberty) |
-| `EXTRACTION_PROVIDER=llm` + `OPENAI_API_KEY` | Real LLM extraction (OpenAI-compatible) |
+| `GROK_API` | xAI Grok for preference parsing and food-photo vision |
+| `GROK_BASE_URL` / `GROK_MODEL` / `GROK_VISION_MODEL` | Optional Grok host/model (defaults: `https://api.x.ai/v1`, `grok-4.6`) |
+| `EXTRACTION_PROVIDER=llm` + `OPENAI_API_KEY` | Real LLM event extraction (OpenAI-compatible; not used for preferences when `GROK_API` is set) |
 | `OPENAI_BASE_URL` / `OPENAI_MODEL` | Custom host (default OpenAI; IFM: `https://api.ifm.ai/v1` + `IFM/K2-Horizon-375B-A23B`) |
 | `NEXT_PUBLIC_SUPABASE_URL` + anon/service keys | Postgres backend |
 | `GOOGLE_CALENDAR_CLIENT_ID` / secret / redirect | Google Calendar OAuth |

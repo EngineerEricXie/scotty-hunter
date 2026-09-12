@@ -4,7 +4,7 @@ import { getEventRepository } from "@/lib/db";
 import { applyCorpusBoost } from "@/lib/community/boost";
 import { buildItinerary } from "@/lib/planner/build-itinerary";
 import { buildWeekPlan } from "@/lib/planner/build-week";
-import { demoNow } from "@/lib/demo-clock";
+import { frozenDemoNow } from "@/lib/demo-clock";
 
 const BodySchema = z.object({
   date: z.string(),
@@ -37,6 +37,7 @@ const BodySchema = z.object({
     )
     .optional(),
   mode: z.enum(["day", "week"]).optional(),
+  demo_clock: z.boolean().optional(),
 });
 
 export async function POST(request: Request) {
@@ -61,7 +62,7 @@ export async function POST(request: Request) {
       ...parsed.data,
       allow_expired_registration: parsed.data.allow_expired_registration ?? false,
     };
-    const now = demoNow();
+    const now = parsed.data.demo_clock ? frozenDemoNow() : new Date();
     if (mode === "week") {
       const week = buildWeekPlan(events, requestBody, now);
       return NextResponse.json({ week, itinerary: week.days[0]?.itinerary ?? null });

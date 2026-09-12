@@ -113,6 +113,30 @@ describe("planner conflicts", () => {
     expect(plan.notes.join(" ")).toMatch(/lunch/i);
   });
 
+  it("places afternoon snacks between lunch and dinner in time order", () => {
+    const snack = event({
+      id: "snack",
+      title: "Cookie hour",
+      start_time: zonedWallTimeToIso(2026, 9, 12, 16, 0),
+      end_time: zonedWallTimeToIso(2026, 9, 12, 16, 45),
+      building_id: "doherty",
+      food_types: ["snacks"],
+      food_evidence: "Snacks will be provided.",
+    });
+    const plan = buildItinerary([dinner, snack, lunch], {
+      date: "2026-09-12",
+      meals: ["lunch", "dinner", "snacks"],
+      max_walking_minutes: 20,
+      start_building_id: "ghc",
+      include_likely: true,
+      explicit_only: false,
+      allow_expired_registration: false,
+    });
+    expect(plan.events.map((item) => item.id)).toEqual(["lunch", "snack", "dinner"]);
+    const eventTimes = plan.items.filter((item) => item.kind === "event").map((item) => item.at);
+    expect(eventTimes).toEqual([lunch.start_time, snack.start_time, dinner.start_time]);
+  });
+
   it("selects compatible lunch and dinner deterministically", () => {
     const plan = buildItinerary([lunch, dinner], {
       date: "2026-09-12",

@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { liveNowGoing, onScottyChange, type NowGoingPing } from "@/lib/scotty/state";
-import { demoNowMs } from "@/lib/demo-clock";
+import { demoNowMs, onDemoClockChange } from "@/lib/demo-clock";
+import { APP_RESET_EVENT } from "@/lib/storage/local-state";
 
 function recency(iso: string): string {
   const min = Math.max(0, Math.round((demoNowMs() - new Date(iso).getTime()) / 60_000));
@@ -17,9 +18,13 @@ export function NowGoingTicker() {
     const refresh = () => setPings(liveNowGoing());
     refresh();
     const unsub = onScottyChange(refresh);
+    const unsubClock = onDemoClockChange(refresh);
+    window.addEventListener(APP_RESET_EVENT, refresh);
     const id = window.setInterval(refresh, 20_000);
     return () => {
       unsub();
+      unsubClock();
+      window.removeEventListener(APP_RESET_EVENT, refresh);
       window.clearInterval(id);
     };
   }, []);
@@ -49,7 +54,14 @@ export function NowGoingBadge({ eventId }: { eventId: string }) {
   useEffect(() => {
     const refresh = () => setLive(liveNowGoing().some((ping) => ping.eventId === eventId));
     refresh();
-    return onScottyChange(refresh);
+    const unsub = onScottyChange(refresh);
+    const unsubClock = onDemoClockChange(refresh);
+    window.addEventListener(APP_RESET_EVENT, refresh);
+    return () => {
+      unsub();
+      unsubClock();
+      window.removeEventListener(APP_RESET_EVENT, refresh);
+    };
   }, [eventId]);
   if (!live) return null;
   return (

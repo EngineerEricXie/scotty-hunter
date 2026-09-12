@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getEventRepository } from "@/lib/db";
 import { eventToIcs, itineraryToIcs } from "@/lib/calendar/calendar-service";
 import { buildItinerary } from "@/lib/planner/build-itinerary";
+import { frozenDemoNow } from "@/lib/demo-clock";
 import { z } from "zod";
 
 export async function GET(request: Request) {
@@ -31,6 +32,7 @@ const PlanBody = z.object({
   start_building_id: z.string(),
   include_likely: z.boolean(),
   explicit_only: z.boolean(),
+  demo_clock: z.boolean().optional(),
 });
 
 export async function POST(request: Request) {
@@ -40,10 +42,14 @@ export async function POST(request: Request) {
   }
   const repo = getEventRepository();
   const events = await repo.listEvents({ date: parsed.data.date });
-  const itinerary = buildItinerary(events, {
-    ...parsed.data,
-    allow_expired_registration: false,
-  });
+  const itinerary = buildItinerary(
+    events,
+    {
+      ...parsed.data,
+      allow_expired_registration: false,
+    },
+    parsed.data.demo_clock ? frozenDemoNow() : new Date(),
+  );
   const ics = itineraryToIcs(itinerary);
   return new NextResponse(ics, {
     headers: {

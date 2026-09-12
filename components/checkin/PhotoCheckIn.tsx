@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { APP_CONFIG } from "@/lib/config";
 import {
   confirmPhoto,
@@ -10,6 +10,7 @@ import {
 } from "@/lib/scotty/state";
 import { ATLAS_BY_ID } from "@/lib/scotty/atlas";
 import { getHiddenMenu, type HiddenMenu, type HiddenMenuDish } from "@/lib/vision/hidden-menu";
+import { APP_RESET_EVENT } from "@/lib/storage/local-state";
 
 export function PhotoCheckIn({
   eventId,
@@ -30,7 +31,7 @@ export function PhotoCheckIn({
       ? isMenuUnlocked(eventId)
         ? "Table photo matched a hidden menu the public listing omitted."
         : "Official copy is incomplete. Snap the table to unlock the real dishes."
-      : "Camera → mock AI labels → Food Dex.",
+      : "Camera → Grok labels → Food Dex.",
   );
   const [labels, setLabels] = useState<string[]>([]);
   const [atlasIds, setAtlasIds] = useState<string[]>([]);
@@ -38,16 +39,40 @@ export function PhotoCheckIn({
   const [preview, setPreview] = useState<string | null>(null);
   const [result, setResult] = useState<string | null>(null);
   const [justUnlocked, setJustUnlocked] = useState(false);
+  const previewRef = useRef<string | null>(null);
+
+  function lockedNote() {
+    return menu
+      ? "Official copy is incomplete. Snap the table to unlock the real dishes."
+      : "Camera → Grok labels → Food Dex.";
+  }
+
+  function clearPhotoUi() {
+    if (previewRef.current) URL.revokeObjectURL(previewRef.current);
+    previewRef.current = null;
+    setPreview(null);
+    setLabels([]);
+    setAtlasIds([]);
+    setResult(null);
+    setJustUnlocked(false);
+    setNote(lockedNote());
+  }
 
   useEffect(() => {
     return onScottyChange(() => setScottyTick((tick) => tick + 1));
   }, []);
 
   useEffect(() => {
+    const onReset = () => clearPhotoUi();
+    window.addEventListener(APP_RESET_EVENT, onReset);
+    return () => window.removeEventListener(APP_RESET_EVENT, onReset);
+  }, [menu]);
+
+  useEffect(() => {
     return () => {
-      if (preview) URL.revokeObjectURL(preview);
+      if (previewRef.current) URL.revokeObjectURL(previewRef.current);
     };
-  }, [preview]);
+  }, []);
 
   async function onFile(file: File | null) {
     if (!file) return;
@@ -61,19 +86,20 @@ export function PhotoCheckIn({
       setNote("Image is too large (max 4 MB).");
       return;
     }
-    if (preview) URL.revokeObjectURL(preview);
-    setPreview(URL.createObjectURL(file));
+    if (previewRef.current) URL.revokeObjectURL(previewRef.current);
+    const url = URL.createObjectURL(file);
+    previewRef.current = url;
+    setPreview(url);
     setBusy(true);
     try {
       const res = await fetch("/api/vision", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: file.name,
-          size: file.size,
-          type: file.type,
-          eventId: eventId ?? null,
-        }),
+        body: (() => {
+          const form = new FormData();
+          form.append("file", file);
+          if (eventId) form.append("eventId", eventId);
+          return form;
+        })(),
       });
       const json = (await res.json()) as {
         labels?: string[];
@@ -81,15 +107,16 @@ export function PhotoCheckIn({
         note?: string;
         hiddenMenu?: HiddenMenu | null;
         error?: string;
+        detail?: string;
       };
       if (!res.ok) {
-        setNote(json.error ?? "Could not scan that photo.");
+        setNote(json.detail ? `${json.error ?? "Could not scan that photo."} ${json.detail}` : (json.error ?? "Could not scan that photo."));
         return;
       }
       const nextLabels = json.labels ?? [];
       setLabels(nextLabels);
       setAtlasIds(json.atlasIds ?? []);
-      setNote(json.note ?? "Mock food labels.");
+      setNote(json.note ?? "Grok labeled the photo.");
 
       if (nextLabels.length > 0) {
         const next = confirmPhoto({
@@ -97,6 +124,7 @@ export function PhotoCheckIn({
           title,
           buildingId,
           labels: nextLabels,
+          unlockHiddenMenu: Boolean(json.hiddenMenu),
         });
         const unlockedMenu = Boolean(json.hiddenMenu);
         setJustUnlocked(unlockedMenu);

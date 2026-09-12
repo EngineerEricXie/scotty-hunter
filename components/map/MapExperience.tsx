@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import type { Event } from "@/lib/types";
 import { calendarDateInZone } from "@/lib/timezone";
-import { demoToday } from "@/lib/demo-clock";
+import { DEMO_CLOCK_EVENT, demoToday } from "@/lib/demo-clock";
 import { eventVisible, type MapFilters } from "@/lib/filters";
 import { FilterBar } from "@/components/map/FilterBar";
 import { EventBottomSheet } from "@/components/map/EventBottomSheet";
@@ -16,6 +16,7 @@ import { EmptyState, ErrorState, LoadingState } from "@/components/ui/States";
 import { PressStartGate, StatusBar } from "@/components/ui/PressStart";
 import { NowGoingTicker } from "@/components/live/NowGoingTicker";
 import {
+  APP_RESET_EVENT,
   loadLastPlanEventIds,
   loadPreferences,
   seedDemoAvailability,
@@ -130,7 +131,7 @@ export function MapExperience() {
     setPlanDate(null);
     const ids = loadLastPlanEventIds();
     setPlannedIds(ids);
-    if (ids.length >= 2) setShowRoute(true);
+    setShowRoute(ids.length >= 2);
     syncPanelUrl(null);
   }
 
@@ -155,13 +156,37 @@ export function MapExperience() {
 
   useEffect(() => {
     if (panel !== "plan") {
-      setPlannedIds(loadLastPlanEventIds());
+      const ids = loadLastPlanEventIds();
+      setPlannedIds(ids);
+      setShowRoute(ids.length >= 2);
     }
     if (panel) {
       setSelectedId(null);
       setClusterEvents(null);
     }
   }, [panel]);
+
+  useEffect(() => {
+    const onReset = () => {
+      setPlannedIds([]);
+      setShowRoute(false);
+      setSelectedId(null);
+      setClusterEvents(null);
+      setFilters((prev) => ({ ...prev, date: demoToday() }));
+    };
+    const onClock = () => {
+      setFilters((prev) => {
+        const date = demoToday();
+        return prev.date === date ? prev : { ...prev, date };
+      });
+    };
+    window.addEventListener(APP_RESET_EVENT, onReset);
+    window.addEventListener(DEMO_CLOCK_EVENT, onClock);
+    return () => {
+      window.removeEventListener(APP_RESET_EVENT, onReset);
+      window.removeEventListener(DEMO_CLOCK_EVENT, onClock);
+    };
+  }, []);
 
   useEffect(() => {
     const onPopState = () => {

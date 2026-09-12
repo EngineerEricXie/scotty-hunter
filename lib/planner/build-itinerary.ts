@@ -16,7 +16,7 @@ import { formatTime } from "@/lib/timezone";
 import { matchEvent } from "@/lib/personalization/match-event";
 import { requiredActionsForEvents } from "@/lib/planner/required-actions";
 
-const MEAL_ORDER: MealType[] = ["breakfast", "lunch", "dinner", "snacks"];
+const MEAL_ORDER: MealType[] = ["breakfast", "lunch", "snacks", "dinner"];
 
 function eventOnDate(event: Event, date: string): boolean {
   return calendarDateInZone(new Date(event.start_time), APP_TIMEZONE) === date;
@@ -53,10 +53,12 @@ export function buildItinerary(
   const meals = MEAL_ORDER.filter((meal) => request.meals.includes(meal));
   const candidates = events
     .filter((event) => eventOnDate(event, request.date))
-    .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
+    .sort((a, b) => a.start_time.localeCompare(b.start_time));
 
   for (const meal of meals) {
-    const previous = selected.at(-1)?.event ?? null;
+    const previous =
+      [...selected].sort((a, b) => a.event.start_time.localeCompare(b.event.start_time)).at(-1)
+        ?.event ?? null;
     const originId = previous?.building_id ?? request.start_building_id;
     const scored = candidates
       .map((event) => {
@@ -110,6 +112,8 @@ export function buildItinerary(
       warnings: best.matched.warnings,
     });
   }
+
+  selected.sort((a, b) => a.event.start_time.localeCompare(b.event.start_time));
 
   const items: ItineraryLeg[] = [];
   let cursorBuilding = request.start_building_id;

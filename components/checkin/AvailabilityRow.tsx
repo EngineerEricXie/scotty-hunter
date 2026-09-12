@@ -1,9 +1,9 @@
 "use client";
 
-import { latestAvailability, reportAvailability } from "@/lib/storage/local-state";
+import { latestAvailability, reportAvailability, APP_RESET_EVENT } from "@/lib/storage/local-state";
 import { pingNowGoing } from "@/lib/scotty/state";
 import type { AvailabilityStatus } from "@/lib/types";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 const OPTIONS: { id: AvailabilityStatus; label: string; swatch: string }[] = [
   { id: "PLENTY", label: "Plenty", swatch: "🟢" },
@@ -27,6 +27,13 @@ export function AvailabilityRow({
   buildingId?: string | null;
 }) {
   const [report, setReport] = useState(() => latestAvailability(eventId));
+
+  useEffect(() => {
+    const refresh = () => setReport(latestAvailability(eventId));
+    refresh();
+    window.addEventListener(APP_RESET_EVENT, refresh);
+    return () => window.removeEventListener(APP_RESET_EVENT, refresh);
+  }, [eventId]);
 
   function choose(status: AvailabilityStatus) {
     const next = reportAvailability(eventId, status);

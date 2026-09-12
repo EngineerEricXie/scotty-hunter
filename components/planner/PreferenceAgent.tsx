@@ -24,17 +24,39 @@ export function PreferenceAgent({
   const [warning, setWarning] = useState("");
   const [source, setSource] = useState<"llm" | "heuristic" | "">("");
   const [agentReady, setAgentReady] = useState<boolean | null>(null);
+  const [agentLabel, setAgentLabel] = useState("Checking agent…");
 
   useEffect(() => {
     fetch("/api/preferences/parse")
       .then((res) => res.json())
-      .then((json: { agent_ready?: boolean }) => setAgentReady(Boolean(json.agent_ready)))
-      .catch(() => setAgentReady(false));
+      .then((json: { agent_ready?: boolean; provider?: string; model?: string | null }) => {
+        setAgentReady(Boolean(json.agent_ready));
+        if (json.agent_ready && json.provider === "grok") {
+          setAgentLabel(
+            json.model ? `Using Grok (${json.model}) for preference parsing.` : "Using Grok for preference parsing.",
+          );
+        } else if (json.agent_ready) {
+          setAgentLabel("Using your configured LLM API.");
+        } else {
+          setAgentLabel("GROK_API not detected — local parser only.");
+        }
+      })
+      .catch(() => {
+        setAgentReady(false);
+        setAgentLabel("GROK_API not detected — local parser only.");
+      });
   }, []);
 
   useEffect(() => {
     const utterance = value.last_preference_utterance;
-    if (utterance && !/[\u4e00-\u9fff]/.test(utterance)) setDraft(utterance);
+    if (!utterance || /[\u4e00-\u9fff]/.test(utterance)) {
+      setDraft("");
+      setError("");
+      setWarning("");
+      setSource("");
+      return;
+    }
+    setDraft(utterance);
   }, [value.last_preference_utterance]);
 
   function loadDemoPersona() {
@@ -98,11 +120,7 @@ export function PreferenceAgent({
         Load demo persona
       </button>
       <p className="mt-2 text-xs font-bold text-muted">
-        {agentReady === true
-          ? "Using your configured LLM API."
-          : agentReady === false
-            ? "API key not detected — local parser only."
-            : "Checking agent…"}
+        {agentReady === null ? "Checking agent…" : agentLabel}
       </p>
       <label className="mt-3 block">
         <span className="sr-only">Preference description</span>

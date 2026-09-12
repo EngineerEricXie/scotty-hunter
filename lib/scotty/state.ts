@@ -3,6 +3,8 @@ import { getHiddenMenu, type HiddenMenu } from "@/lib/vision/hidden-menu";
 import { loadPoints } from "@/lib/storage/local-state";
 import { APP_CONFIG } from "@/lib/config";
 import { demoNowMs } from "@/lib/demo-clock";
+import { DEMO_SEEDED_EVENTS } from "@/data/fixtures/demo-events";
+import { zonedWallTimeToIso } from "@/lib/timezone";
 
 const KEY = "scottybites:scotty";
 const LIVE_MS = 45 * 60_000;
@@ -39,6 +41,8 @@ export interface NowGoingPing {
   handle: string;
   kind: NowGoingKind;
   at: string;
+  startTime?: string;
+  endTime?: string;
 }
 
 export type HunterAnimal = "squirrel" | "raccoon" | "cardinal" | "terrier";
@@ -141,8 +145,32 @@ function write(state: ScottyState) {
   notify();
 }
 
+function demoEventWindow(eventId: string): { startTime: string; endTime: string } | null {
+  const seeded = DEMO_SEEDED_EVENTS.find((event) => event.id === eventId);
+  if (seeded?.start_time) {
+    return { startTime: seeded.start_time, endTime: seeded.end_time ?? seeded.start_time };
+  }
+  if (eventId === "hackcmu-2026-saturday-lunch") {
+    return {
+      startTime: zonedWallTimeToIso(2026, 9, 12, 12, 0),
+      endTime: zonedWallTimeToIso(2026, 9, 12, 13, 30),
+    };
+  }
+  return null;
+}
+
+function pingIsHappening(ping: NowGoingPing, now: number): boolean {
+  const window = ping.startTime
+    ? { startTime: ping.startTime, endTime: ping.endTime ?? ping.startTime }
+    : demoEventWindow(ping.eventId);
+  if (!window) return ping.kind !== "demo";
+  const start = new Date(window.startTime).getTime();
+  const end = new Date(window.endTime).getTime();
+  return now >= start && now <= end;
+}
+
 function demoLivePings(now: number): NowGoingPing[] {
-  return [
+  const catalog: NowGoingPing[] = [
     {
       id: "demo-ri-pizza",
       eventId: "demo-ri-pizza",
@@ -184,6 +212,12 @@ function demoLivePings(now: number): NowGoingPing[] {
       at: new Date(now - 22 * 60_000).toISOString(),
     },
   ];
+  return catalog
+    .map((ping) => {
+      const window = demoEventWindow(ping.eventId);
+      return window ? { ...ping, ...window } : ping;
+    })
+    .filter((ping) => pingIsHappening(ping, now));
 }
 
 function syncDemoNowGoing(state: ScottyState): ScottyState {
@@ -272,6 +306,7 @@ export function scottyMood(state: ScottyState): ScottyMood {
 export function liveNowGoing(state: ScottyState = loadScotty(), now = demoNowMs()): NowGoingPing[] {
   return state.nowGoing
     .filter((ping) => now - new Date(ping.at).getTime() <= LIVE_MS)
+    .filter((ping) => pingIsHappening(ping, now))
     .sort((a, b) => b.at.localeCompare(a.at));
 }
 
@@ -316,6 +351,7 @@ export function confirmPhoto(input: {
   title?: string;
   buildingId?: string | null;
   labels: string[];
+  unlockHiddenMenu?: boolean;
 }): { state: ScottyState; atlasIds: string[]; newSpecies: string[]; points: number } {
   const state = loadScotty();
   const atlasIds = matchAtlasIds(input.labels);
@@ -345,7 +381,7 @@ export function confirmPhoto(input: {
   };
   state.checkins = [...state.checkins, checkin];
   state.quests = { ...state.quests, snap: true, feed: true };
-  if (input.eventId && getHiddenMenu(input.eventId)) {
+  if (input.unlockHiddenMenu && input.eventId && getHiddenMenu(input.eventId)) {
     applyMenuUnlock(state, input.eventId, now);
   }
   if (Object.keys(state.atlas).length >= 3) state.quests = { ...state.quests, atlas3: true };
@@ -450,4 +486,20 @@ export function onScottyChange(handler: () => void): () => void {
     window.removeEventListener("scotty:update", handler);
     window.removeEventListener("storage", handler);
   };
+}
+
+/** Empty Scotty: no photos, dex, menus, or quests. Splash stays dismissed. */
+export function resetScottyToDefault(): ScottyState {
+  const now = demoNowMs();
+  const fresh: ScottyState = {
+    ...DEFAULT_STATE,
+    hunters: DEFAULT_HUNTERS.map((hunter) => ({ ...hunter })),
+    seenSplash: true,
+    createdAt: new Date(now).toISOString(),
+    updatedAt: new Date(now).toISOString(),
+    nowGoing: demoLivePings(now),
+  };
+  if (typeof window === "undefined") return fresh;
+  write(fresh);
+  return fresh;
 }

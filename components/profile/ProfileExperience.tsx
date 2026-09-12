@@ -5,7 +5,7 @@ import Link from "next/link";
 import { BottomNav } from "@/components/ui/BottomNav";
 import { UnavailableIntegration } from "@/components/ui/States";
 import { StatusBar } from "@/components/ui/PressStart";
-import { loadScotty } from "@/lib/scotty/state";
+import { loadScotty, onScottyChange } from "@/lib/scotty/state";
 
 interface SourceRow {
   id: string;
@@ -23,21 +23,35 @@ interface ExtractionInfo {
   endpoint?: string | null;
 }
 
+interface GrokInfo {
+  ready?: boolean;
+  chatModel?: string | null;
+  visionModel?: string | null;
+  endpoint?: string | null;
+}
+
 export function ProfileExperience() {
   const [points, setPoints] = useState(0);
   const [sources, setSources] = useState<SourceRow[]>([]);
   const [extraction, setExtraction] = useState<ExtractionInfo>({});
+  const [grok, setGrok] = useState<GrokInfo>({});
 
   useEffect(() => {
-    const boot = window.setTimeout(() => setPoints(loadScotty().points), 0);
+    const refreshPoints = () => setPoints(loadScotty().points);
+    const boot = window.setTimeout(refreshPoints, 0);
+    const unsub = onScottyChange(refreshPoints);
     fetch("/api/sources")
       .then((res) => res.json())
-      .then((json: { sources?: SourceRow[]; extraction?: ExtractionInfo }) => {
+      .then((json: { sources?: SourceRow[]; extraction?: ExtractionInfo; grok?: GrokInfo }) => {
         setSources(json.sources ?? []);
         setExtraction(json.extraction ?? {});
+        setGrok(json.grok ?? {});
       })
       .catch(() => undefined);
-    return () => window.clearTimeout(boot);
+    return () => {
+      unsub();
+      window.clearTimeout(boot);
+    };
   }, []);
 
   return (
@@ -60,6 +74,20 @@ export function ProfileExperience() {
         </div>
 
         <section className="mt-4 space-y-3">
+          {grok.ready ? (
+            <div className="border-4 border-ink bg-white/80 px-4 py-3 text-sm">
+              <p className="font-bold text-ink">Grok connected</p>
+              <p className="mt-1 text-muted">
+                Preferences: {grok.chatModel} · Vision: {grok.visionModel}
+              </p>
+              <p className="mt-1 text-muted">{grok.endpoint}</p>
+            </div>
+          ) : (
+            <UnavailableIntegration
+              name="Grok"
+              detail="Add GROK_API to .env.local to parse preferences and label food photos with xAI Grok."
+            />
+          )}
           <UnavailableIntegration
             name="Supabase"
             detail="Repository mode is local-fixture until a Supabase URL and key are provided."

@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import type { Event, Todo } from "@/lib/types";
-import { loadTodos, saveTodos } from "@/lib/storage/local-state";
+import { APP_RESET_EVENT, loadTodos, saveTodos } from "@/lib/storage/local-state";
 import { relativeDeadline } from "@/lib/timezone";
 import { demoNow } from "@/lib/demo-clock";
 import { BottomNav } from "@/components/ui/BottomNav";
@@ -19,6 +19,12 @@ export function TodosExperience({
 }) {
   const [todos, setTodos] = useState<Todo[]>(loadTodos);
   const [events, setEvents] = useState<Record<string, Event>>({});
+
+  useEffect(() => {
+    const onReset = () => setTodos(loadTodos());
+    window.addEventListener(APP_RESET_EVENT, onReset);
+    return () => window.removeEventListener(APP_RESET_EVENT, onReset);
+  }, []);
 
   useEffect(() => {
     fetch("/api/events?include_none=true")

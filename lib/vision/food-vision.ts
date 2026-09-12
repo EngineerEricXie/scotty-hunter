@@ -1,3 +1,5 @@
+import { hasGrokCredentials } from "@/lib/config";
+import { completeGrokVisionJson } from "@/lib/llm/chat";
 import { matchAtlasIds } from "@/lib/scotty/atlas";
 import {
   getHiddenMenu,
@@ -10,7 +12,7 @@ export interface FoodVisionResult {
   labels: string[];
   atlasIds: string[];
   confidence: number;
-  provider: "mock" | "real";
+  provider: "mock" | "grok";
   hiddenMenu: ReturnType<typeof serializeHiddenMenu> | null;
 }
 
@@ -19,12 +21,23 @@ export interface FoodVisionInput {
   byteLength: number;
   mime: string;
   eventId?: string | null;
+  imageDataUrl?: string | null;
 }
 
 export interface FoodVisionService {
   readonly name: string;
   analyze(input: FoodVisionInput): Promise<FoodVisionResult>;
 }
+
+const VISION_SYSTEM = [
+  "You identify campus free-food table photos for Carnegie Mellon students.",
+  "Reply with a single JSON object only. First character must be '{'.",
+  '{"labels":["Cheese pizza","Mixed greens"],"confidence":0.86,"food_table":true}',
+  "labels: 1-8 short English dish names actually visible. Empty array if no food.",
+  "confidence: number from 0 to 1.",
+  "food_table: true if this is a serving table, catering trays, buffet, or plated campus food.",
+  "Do not invent dishes that are not visible.",
+].join("\n");
 
 function labelsFromFileName(fileName: string, mime: string): { labels: string[]; confidence: number } {
   const lower = fileName.toLowerCase();
@@ -60,6 +73,46 @@ export function resolveVisionLabels(input: FoodVisionInput): {
   return { ...guessed, menu: null };
 }
 
+export function parseVisionPayload(raw: unknown): {
+  labels: string[];
+  confidence: number;
+  foodTable: boolean;
+} {
+  const obj = raw && typeof raw === "object" && !Array.isArray(raw) ? (raw as Record<string, unknown>) : {};
+  const labels = Array.isArray(obj.labels)
+    ? obj.labels
+        .filter((item): item is string => typeof item === "string")
+        .map((item) => item.trim())
+        .filter(Boolean)
+        .slice(0, 8)
+    : [];
+  const confidence =
+    typeof obj.confidence === "number" && Number.isFinite(obj.confidence)
+      ? Math.min(1, Math.max(0, obj.confidence))
+      : 0.5;
+  const foodTable = obj.food_table === true || obj.foodTable === true;
+  return { labels, confidence, foodTable };
+}
+
+export function revealHiddenMenuFromVision(
+  eventId: string | null | undefined,
+  labels: string[],
+  foodTable: boolean,
+): HiddenMenu | null {
+  const menu = getHiddenMenu(eventId);
+  if (!menu) return null;
+  if (foodTable) return menu;
+  const hay = labels.join(" ").toLowerCase();
+  const overlap = menu.dishes.some((dish) => {
+    const name = dish.name.toLowerCase();
+    return hay.includes(name) || labels.some((label) => {
+      const lower = label.toLowerCase();
+      return name.includes(lower) || lower.includes(name);
+    });
+  });
+  return overlap ? menu : null;
+}
+
 export class MockFoodVisionService implements FoodVisionService {
   readonly name = "mock";
 
@@ -75,16 +128,38 @@ export class MockFoodVisionService implements FoodVisionService {
   }
 }
 
-export class RealVisionService implements FoodVisionService {
-  readonly name = "real-scaffold";
+export class GrokFoodVisionService implements FoodVisionService {
+  readonly name = "grok";
 
-  async analyze(): Promise<FoodVisionResult> {
-    throw new Error(
-      "Real vision APIs require a provider key. Use MockFoodVisionService until credentials exist.",
-    );
+  async analyze(input: FoodVisionInput): Promise<FoodVisionResult> {
+    if (!input.imageDataUrl) {
+      throw new Error("Photo bytes are required for Grok vision.");
+    }
+    const raw = await completeGrokVisionJson({
+      system: VISION_SYSTEM,
+      user: [
+        `File name: ${input.fileName}`,
+        `Event id: ${input.eventId ?? "none"}`,
+        "Identify visible food. Output one JSON object now.",
+      ].join("\n"),
+      imageDataUrl: input.imageDataUrl,
+    });
+    const parsed = parseVisionPayload(raw);
+    const menu = revealHiddenMenuFromVision(input.eventId, parsed.labels, parsed.foodTable);
+    const labels = parsed.labels.length > 0 ? parsed.labels : menu ? hiddenMenuLabels(menu) : [];
+    return {
+      labels,
+      atlasIds: matchAtlasIds(labels),
+      confidence: parsed.confidence,
+      provider: "grok",
+      hiddenMenu: menu ? serializeHiddenMenu(menu) : null,
+    };
   }
 }
 
+/** @deprecated Use GrokFoodVisionService. */
+export class RealVisionService extends GrokFoodVisionService {}
+
 export function getFoodVisionService(): FoodVisionService {
-  return new MockFoodVisionService();
+  return hasGrokCredentials() ? new GrokFoodVisionService() : new MockFoodVisionService();
 }

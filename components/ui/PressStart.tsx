@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import { markSplashSeen, loadScotty } from "@/lib/scotty/state";
 import { ScottySprite } from "@/components/pet/ScottySprite";
 import { prefetchCampusEvents } from "@/lib/events-client";
-import { demoClockLabel } from "@/lib/demo-clock";
+import { APP_RESET_EVENT } from "@/lib/storage/local-state";
+import { demoClockLabel, isDemoClockActive, onDemoClockChange } from "@/lib/demo-clock";
 
 export function PressStartGate() {
   const [ready, setReady] = useState(false);
@@ -54,12 +55,23 @@ export function PressStartGate() {
 }
 
 export function StatusBar({ right = "HACKCMU" }: { right?: string }) {
-  const [clock, setClock] = useState(demoClockLabel());
+  const [clock, setClock] = useState("");
   useEffect(() => {
     const tick = () => setClock(demoClockLabel());
     tick();
-    const id = window.setInterval(tick, 15_000);
-    return () => window.clearInterval(id);
+    let id = window.setInterval(tick, isDemoClockActive() ? 30_000 : 1_000);
+    const onMode = () => {
+      tick();
+      window.clearInterval(id);
+      id = window.setInterval(tick, isDemoClockActive() ? 30_000 : 1_000);
+    };
+    const unsub = onDemoClockChange(onMode);
+    window.addEventListener(APP_RESET_EVENT, onMode);
+    return () => {
+      window.clearInterval(id);
+      unsub();
+      window.removeEventListener(APP_RESET_EVENT, onMode);
+    };
   }, []);
 
   return (

@@ -3,13 +3,17 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import type { Event, Itinerary, UserPreference, WeekPlan } from "@/lib/types";
-import { demoToday } from "@/lib/demo-clock";
+import { demoToday, enableDemoClock } from "@/lib/demo-clock";
 import {
+  DEFAULT_PREFERENCES,
   loadPreferences,
   saveLastPlanEventIds,
+  resetLocalAppData,
   savePreferences,
+  seedDemoAvailability,
   upsertTodo,
 } from "@/lib/storage/local-state";
+import { loadScotty, resetScottyToDefault } from "@/lib/scotty/state";
 import { plannerRequestFromPrefs } from "@/lib/personalization/request";
 import { applyDemoPersona } from "@/lib/personalization/demo-persona";
 import { PlannerForm } from "@/components/planner/PlannerForm";
@@ -131,11 +135,28 @@ export function PlannerExperience({
   }
 
   function runDemoPlan() {
+    enableDemoClock();
+    seedDemoAvailability(true);
+    loadScotty();
+    const demoDate = demoToday();
+    setDate(demoDate);
     const next = applyDemoPersona(prefs);
     setPrefs(next);
     savePreferences(next);
     setMode("day");
-    void submit({ prefs: next, mode: "day" });
+    void submit({ prefs: next, mode: "day", date: demoDate });
+  }
+
+  function resetToDefault() {
+    resetLocalAppData();
+    resetScottyToDefault();
+    setPrefs({ ...DEFAULT_PREFERENCES });
+    setDate(demoToday());
+    setMode("day");
+    setPlan(null);
+    setWeek(null);
+    setEvents({});
+    setError("");
   }
 
   useEffect(() => {
@@ -167,14 +188,25 @@ export function PlannerExperience({
             Ranking stays deterministic — not an LLM. Demo: load the persona, plan today, then see it
             on the map.
           </p>
-          <button
-            type="button"
-            disabled={busy}
-            onClick={runDemoPlan}
-            className="pixel-btn mt-3 min-h-12 w-full bg-gold text-sm disabled:opacity-60"
-          >
-            {busy && mode === "day" ? "Planning demo day…" : "RUN DEMO PLAN"}
-          </button>
+          <div className="mt-3 flex gap-2">
+            <button
+              type="button"
+              disabled={busy}
+              onClick={runDemoPlan}
+              className="pixel-btn min-h-12 min-w-0 flex-1 bg-gold text-sm disabled:opacity-60"
+            >
+              {busy && mode === "day" ? "Planning demo day…" : "RUN DEMO PLAN"}
+            </button>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={resetToDefault}
+              className="pixel-chip min-h-12 shrink-0 bg-white px-3 text-sm disabled:opacity-60"
+              aria-label="Reset to default"
+            >
+              Reset to default
+            </button>
+          </div>
           <div className="mt-3 flex gap-2">
             <button
               type="button"
