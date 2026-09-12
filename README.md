@@ -1,4 +1,4 @@
-# ScottyBites
+# Scotty-Hunter
 
 Map-first CMU free-food discovery and planning. Messy event pages become structured meals, with evidence, walking-aware itineraries, and RSVP to-dos.
 
