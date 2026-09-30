@@ -42,7 +42,12 @@ const types = {
   });
   await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
   const url = `http://127.0.0.1:${server.address().port}/scotty-hunter/`;
-  const browser = await chromium.launch({ headless: true });
+  const browser = await chromium.launch({
+    headless: true,
+    ...(process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH
+      ? { executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH }
+      : {}),
+  });
   const page = await browser.newPage({
     viewport: { width: 1440, height: 1000 },
     deviceScaleFactor: 1,
@@ -57,6 +62,21 @@ const types = {
   await page.goto(url);
   await page.getByRole("heading", { name: "On the menu" }).waitFor();
   await page.locator(".food-card").first().waitFor();
+  await page.getByRole("application", { name: "Carnegie Mellon campus map" }).waitFor();
+  await page.locator(".maplibregl-canvas").waitFor();
+  if (
+    await page
+      .locator(".illustrated-map, .campus-illustration, .campus-world, .map-mode-toggle")
+      .count()
+  ) {
+    throw new Error("Removed schematic map must not be rendered");
+  }
+  if (await page.getByRole("button", { name: "Illustrated map", exact: true }).count()) {
+    throw new Error("Removed schematic map must not be selectable");
+  }
+  await page
+    .getByText("Locations are unverified · Demo events", { exact: true })
+    .waitFor();
   await page.screenshot({ path: root + "/qa/desktop-explore.png" });
   console.log("Desktop rendered, event cards:", await page.locator(".food-card").count());
   await page.getByRole("textbox", { name: "Search food or events" }).fill("zzzz-no-food");
@@ -98,7 +118,7 @@ const types = {
   await page.screenshot({ path: root + "/qa/mobile-event.png" });
   if (errors.length) throw new Error(errors.join("\n"));
   console.log(
-    "UI PASS: desktop/mobile, search empty/reset, details, demo itinerary, ICS export, overlay dismissal, base path, no runtime errors",
+    "UI PASS: street-map default, no schematic map or toggle, unverified-location notice, desktop/mobile, search empty/reset, details, demo itinerary, ICS export, overlay dismissal, base path, no runtime errors",
   );
   await browser.close();
   server.close();

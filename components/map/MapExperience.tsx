@@ -41,7 +41,7 @@ import { liveNowGoing, loadScotty, onScottyChange } from "@/lib/scotty/state";
 import { VIEWPORT_SYNC_EVENT, syncAppViewportVars } from "@/lib/ui/viewport-sync";
 
 const CampusMap = dynamic(
-  () => import("@/components/map/DiscoveryMap").then((mod) => mod.DiscoveryMap),
+  () => import("@/components/map/CampusMap").then((mod) => mod.CampusMap),
   { ssr: false, loading: () => <div className="absolute inset-0 bg-canvas" /> },
 );
 
@@ -529,8 +529,8 @@ export function MapExperience() {
         {!selected && !clusterEvents && (
           <div className="map-hint">
             <span className="map-hint-dot" />
-            Pick a bite on the map
-            {plannedCount > 0 ? ` · ${plannedCount} planned` : " · Adventures start here"}
+            Locations are unverified{APP_CONFIG.demoMode ? " · Demo events" : ""}
+            {plannedCount > 0 ? ` · ${plannedCount} planned` : ""}
           </div>
         )}
 

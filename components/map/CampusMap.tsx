@@ -7,7 +7,6 @@ import { APP_CONFIG, CMU_MAP_CENTER } from "@/lib/config";
 import { getBuilding } from "@/lib/maps/buildings";
 import type { Event } from "@/lib/types";
 import { createFoodMarkerElement, createStartMarkerElement } from "@/components/map/FoodMarker";
-import { addBuildingLayer, highlightBuilding } from "@/components/map/BuildingLayer";
 import { ScottyWanderer } from "@/components/map/ScottyWanderer";
 import { CMU_CAMPUS_RING } from "@/lib/maps/campus-mask";
 import {
@@ -118,11 +117,6 @@ export function CampusMap({
         });
         map.setPitch(0);
         map.setBearing(0);
-      }
-      try {
-        addBuildingLayer(map);
-      } catch {
-        // Raster basemap still works if GeoJSON workers are unavailable.
       }
       try {
         addFootwayLayer(map);
@@ -253,10 +247,7 @@ export function CampusMap({
           bearing: 0,
           duration: 650,
         });
-        highlightBuilding(map, building.id);
       }
-    } else if (map) {
-      highlightBuilding(map, null);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [events, selectedId, plannedIds, showRoute, routeStops, goingEventIds]);
