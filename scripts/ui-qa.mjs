@@ -44,6 +44,7 @@ function serveStatic() {
   const types = {
     ".html": "text/html",
     ".js": "text/javascript",
+    ".mjs": "text/javascript",
     ".css": "text/css",
     ".json": "application/json",
     ".svg": "image/svg+xml",
@@ -530,11 +531,13 @@ async function overlaysJourney(page) {
 async function wanderJourney(page, name) {
   const mascot = page.locator(".scotty-wanderer");
   await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.clock.runFor(32);
   await expect(mascot).toHaveAttribute("data-walking", "false");
   const still = await mascot.evaluate((el) => el.style.transform);
   await page.waitForTimeout(250);
   expect(await mascot.evaluate((el) => el.style.transform)).toBe(still);
   await page.emulateMedia({ reducedMotion: "no-preference" });
+  await page.clock.runFor(32);
   await page.waitForFunction(
     (position) =>
       document.querySelector(".scotty-wanderer")?.style.transform !== position,
@@ -694,10 +697,12 @@ async function viewportSuite(browser, url, viewport) {
         : { width: 390, height: 844 };
     await page.setViewportSize(alternate);
     await page.waitForTimeout(350);
+    await showMap(page);
     await controls(page);
     await mapBounds(page);
     await page.setViewportSize({ width: viewport.width, height: viewport.height });
     await page.waitForTimeout(350);
+    await showMap(page);
     await controls(page);
     await mapBounds(page);
     if (viewport.name === "desktop") await extraLocalFeatures(page);
@@ -890,6 +895,7 @@ async function realProviderSmoke(browser, url) {
       for (const viewport of viewports.slice(0, 3)) {
         await page.setViewportSize({ width: viewport.width, height: viewport.height });
         await page.waitForTimeout(750);
+        await showMap(page);
         await controls(page);
         await mapBounds(page);
         await expect(

@@ -46,3 +46,6 @@ next-env.d.ts
 
 # Generated UI evidence
 /qa/
+
+# Copied from the locked MapLibre package before dev/build.
+/public/vendor/maplibre/

@@ -1,9 +1,16 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Map as MapLibreMap, Marker, NavigationControl, LngLatBounds } from "maplibre-gl";
+import {
+  Map as MapLibreMap,
+  Marker,
+  NavigationControl,
+  LngLatBounds,
+  setWorkerUrl,
+} from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { APP_CONFIG, CMU_MAP_CENTER } from "@/lib/config";
+import { assetPath } from "@/lib/runtime";
 import { ScottyWanderer } from "@/components/map/ScottyWanderer";
 import { MealRouteLayer } from "@/components/map/MealRouteLayer";
 import { mealStopByEventId, type MealRoutePreview } from "@/lib/maps/meal-route";
@@ -69,6 +76,7 @@ export function CampusMap({
 
     let map: MapLibreMap;
     try {
+      setWorkerUrl(assetPath("/vendor/maplibre/maplibre-gl-worker.mjs"));
       map = new MapLibreMap({
         container: containerRef.current,
         style: APP_CONFIG.mapStyleUrl,
