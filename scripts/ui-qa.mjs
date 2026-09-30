@@ -1,4 +1,4 @@
-import { chromium } from "@playwright/test";
+import { chromium, expect } from "@playwright/test";
 import http from "node:http";
 import fs from "node:fs";
 import path from "node:path";
@@ -74,9 +74,16 @@ const types = {
   if (await page.getByRole("button", { name: "Illustrated map", exact: true }).count()) {
     throw new Error("Removed schematic map must not be selectable");
   }
-  await page
-    .getByText("Event pins hidden · Locations unverified", { exact: true })
-    .waitFor();
+  await page.getByText("Demo events · Building-level pins", { exact: true }).waitFor();
+  const pins = page.getByRole("switch", { name: "Event pins", exact: true });
+  await expect(pins).toBeChecked();
+  await pins.click();
+  await expect(pins).not.toBeChecked();
+  await page.reload();
+  await expect(pins).not.toBeChecked();
+  await pins.focus();
+  await page.keyboard.press("Space");
+  await expect(pins).toBeChecked();
   await page
     .getByText(
       "Street map unavailable. You can still browse the event list and use the planner.",
@@ -129,7 +136,7 @@ const types = {
   await page.screenshot({ path: root + "/qa/mobile-event.png" });
   if (errors.length) throw new Error(errors.join("\n"));
   console.log(
-    "UI PASS: street-map default, no schematic map or toggle, unverified-location notice, desktop/mobile, search empty/reset, details, demo itinerary, ICS export, overlay dismissal, base path, no runtime errors",
+    "UI PASS: street-map default, no schematic map, default-on pin switch with keyboard/persistence, desktop/mobile, search empty/reset, details, demo itinerary, ICS export, overlay dismissal, base path, no runtime errors",
   );
   const noWebglPage = await browser.newPage({ viewport: { width: 390, height: 844 } });
   noWebglPage.on("pageerror", (error) => errors.push(error.message));
@@ -166,20 +173,88 @@ const types = {
       () => false,
     );
   if (liveTiles) {
-    if (
-      await livePage
-        .locator(".food-marker, .route-start-marker, .map-route-button")
-        .count()
-    ) {
-      throw new Error(
-        "Unverified event pins and routes must not be rendered on the street map",
-      );
-    }
+    await livePage.locator(".food-marker").first().waitFor();
+    const livePins = livePage.getByRole("switch", { name: "Event pins", exact: true });
+    await expect(livePins).toBeChecked();
+    await expect(livePage.locator('.food-marker[data-buildings="tepper"]')).toBeVisible();
+    await expect(livePage.locator('.food-marker[data-buildings*="craig"]')).toHaveCount(
+      0,
+    );
+    await expect(
+      livePage.locator(".route-start-marker, .map-route-button, .illustrated-map"),
+    ).toHaveCount(0);
+    // Tile services may retain long-running requests; functional readiness was checked above.
+    await livePage.waitForTimeout(1500);
     await livePage.screenshot({ path: root + "/qa/desktop-street-map.png" });
-    await livePage.setViewportSize({ width: 390, height: 844 });
-    await livePage.screenshot({ path: root + "/qa/mobile-street-map.png" });
+
+    await livePage.locator('.food-marker[data-buildings="tepper"]').click();
+    await livePage.getByLabel("Overlapping food drops", { exact: true }).waitFor();
+    await livePage
+      .getByLabel("Overlapping food drops", { exact: true })
+      .getByRole("button", { name: /AI Seminar: Grounded Campus Agents/ })
+      .click();
+    await livePage.getByLabel("Event details", { exact: true }).waitFor();
+    await livePage
+      .getByRole("button", { name: "Close event details", exact: true })
+      .click();
+    await livePins.click();
+    await expect(livePage.locator(".food-marker")).toHaveCount(0);
+    await livePage.reload();
+    await expect(livePins).not.toBeChecked();
+    await livePage.locator('[data-map-ready="true"]').waitFor();
+    await expect(livePage.locator(".food-marker")).toHaveCount(0);
+    await livePins.click();
+    await livePage.locator(".food-marker").first().waitFor();
+
+    const mascot = livePage.locator(".scotty-wanderer");
+    await mascot.waitFor();
+    const initialPosition = await mascot.evaluate((el) => el.style.transform);
+    await livePage.waitForFunction(
+      (position) =>
+        Boolean(document.querySelector(".scotty-wanderer")) &&
+        document.querySelector(".scotty-wanderer").style.transform !== position,
+      initialPosition,
+      { timeout: 8000 },
+    );
+    await livePage.emulateMedia({ reducedMotion: "reduce" });
+    await expect(mascot).toHaveAttribute("data-walking", "false");
+    const pausedPosition = await mascot.evaluate((el) => el.style.transform);
+    await livePage.waitForTimeout(500);
+    expect(await mascot.evaluate((el) => el.style.transform)).toBe(pausedPosition);
+    await livePage.emulateMedia({ reducedMotion: "no-preference" });
+    await livePage.waitForFunction(
+      (position) =>
+        Boolean(document.querySelector(".scotty-wanderer")) &&
+        document.querySelector(".scotty-wanderer").style.transform !== position,
+      pausedPosition,
+      { timeout: 8000 },
+    );
+
+    const mobileMap = await browser.newPage({ viewport: { width: 390, height: 844 } });
+    mobileMap.on("pageerror", (error) => errors.push(error.message));
+    await mobileMap.goto(url);
+    await mobileMap.locator(".food-marker").first().waitFor();
+    const mobilePins = mobileMap.getByRole("switch", { name: "Event pins", exact: true });
+    await expect(mobilePins).toBeVisible();
+    await expect(mobilePins).toBeChecked();
+    await mobileMap.waitForTimeout(1500);
+    for (const marker of await mobileMap.locator(".food-marker").all()) {
+      const box = await marker.boundingBox();
+      expect(box).not.toBeNull();
+      expect(box.x).toBeGreaterThanOrEqual(0);
+      expect(box.x + box.width).toBeLessThanOrEqual(390);
+      expect(box.y).toBeGreaterThanOrEqual(212);
+    }
+    await mobileMap.screenshot({ path: root + "/qa/mobile-street-map.png" });
+    await mobilePins.click();
+    await expect(mobileMap.locator(".food-marker")).toHaveCount(0);
+    await mobilePins.click();
+    await mobileMap.locator(".food-marker").first().waitFor();
+    expect(
+      await mobileMap.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+    ).toBe(true);
     console.log(
-      "LIVE MAP PASS: external street tiles loaded; unverified event pins and routes absent",
+      "LIVE MAP PASS: default-on verified building pins, toggle/keyboard/persistence, marker details, mobile toggle, mascot movement and dynamic reduced-motion pause/resume",
     );
   } else {
     console.log(

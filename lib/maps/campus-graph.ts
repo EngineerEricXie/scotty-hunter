@@ -67,8 +67,6 @@ export const CAMPUS_EXITS: CampusExit[] = [
   { id: "hunt:north", buildingId: "hunt", longitude: -79.94355, latitude: 40.44128, label: "Hunt north" },
   { id: "cuc:west", buildingId: "cuc", longitude: -79.94195, latitude: 40.44282, label: "CUC west" },
   { id: "cuc:south", buildingId: "cuc", longitude: -79.9417, latitude: 40.4424, label: "CUC south" },
-  { id: "tepper:north", buildingId: "tepper", longitude: -79.9418, latitude: 40.44155, label: "Tepper north" },
-  { id: "tepper:west", buildingId: "tepper", longitude: -79.94235, latitude: 40.4412, label: "Tepper west" },
   { id: "posner:north", buildingId: "posner", longitude: -79.94285, latitude: 40.44128, label: "Posner north" },
 ];
 
@@ -82,6 +80,7 @@ function nodeLngLat(nodeId: string): LngLat | null {
   return [building.longitude, building.latitude];
 }
 
+// Tepper is off this legacy connector graph until its actual entrances/routes are mapped.
 const EDGES: GraphEdge[] = [
   {
     from: "ghc",
@@ -192,22 +191,8 @@ const EDGES: GraphEdge[] = [
     label: "Hunt to north doors",
     geometry: [[-79.94355, 40.44128]],
   },
-  {
-    from: "tepper",
-    to: "tepper:north",
-    minutes: 1,
-    kind: "indoor",
-    label: "Tepper to north doors",
-    geometry: [[-79.9418, 40.44155]],
-  },
-  {
-    from: "tepper",
-    to: "tepper:west",
-    minutes: 1,
-    kind: "indoor",
-    label: "Tepper to west doors",
-    geometry: [[-79.94235, 40.4412]],
-  },
+
+
   {
     from: "posner",
     to: "posner:north",
@@ -342,19 +327,7 @@ const EDGES: GraphEdge[] = [
       [-79.94355, 40.44128],
     ],
   },
-  {
-    from: "doherty:mall",
-    to: "tepper:north",
-    minutes: 3,
-    kind: "outdoor",
-    label: "Doherty mall to Tepper Quad",
-    geometry: [
-      [-79.94405, 40.4422],
-      [-79.94355, 40.44195],
-      [-79.9427, 40.4417],
-      [-79.9418, 40.44155],
-    ],
-  },
+
   {
     from: "hunt:north",
     to: "cuc:west",
@@ -392,38 +365,9 @@ const EDGES: GraphEdge[] = [
       [-79.9455, 40.44372],
     ],
   },
-  {
-    from: "cuc:south",
-    to: "tepper:north",
-    minutes: 3,
-    kind: "outdoor",
-    label: "CUC to Tepper Quad",
-    geometry: [
-      [-79.9417, 40.4424],
-      [-79.9417, 40.4421],
-      [-79.94175, 40.4418],
-      [-79.9418, 40.44155],
-    ],
-  },
-  {
-    from: "hunt:north",
-    to: "tepper:west",
-    minutes: 3,
-    kind: "outdoor",
-    label: "Hunt to Tepper",
-    geometry: [
-      [-79.9432, 40.44105],
-      [-79.94235, 40.4412],
-    ],
-  },
-  {
-    from: "tepper:north",
-    to: "posner:north",
-    minutes: 2,
-    kind: "outdoor",
-    label: "Tepper to Posner",
-    geometry: [[-79.9424, 40.44122]],
-  },
+
+
+
   {
     from: "hunt:north",
     to: "posner:north",

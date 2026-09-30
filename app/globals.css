@@ -1159,3 +1159,39 @@ select {
     width: calc(100% - 16px);
   }
 }
+
+/* Keep the pin preference visible on desktop and clear of mobile navigation. */
+.map-pins-toggle {
+  position: absolute;
+  top: 26px;
+  right: 26px;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 12px 16px;
+  border: 1px solid #b4c1aa;
+  border-radius: 12px;
+  background: #fffdf8;
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 700;
+}
+.map-pins-toggle[aria-checked="true"] {
+  background: var(--ink);
+  color: #fffdf8;
+}
+.map-pins-toggle:focus-visible {
+  outline: 3px solid var(--tartan);
+  outline-offset: 3px;
+}
+@media (max-width: 768px) {
+  .map-pins-toggle {
+    top: auto;
+    bottom: 160px;
+    right: 16px;
+    padding: 10px 12px;
+    font-size: 11px;
+  }
+}

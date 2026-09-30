@@ -197,7 +197,7 @@ export function PlannerExperience({
           </div>
           <p className="mt-2 text-sm font-bold leading-6 text-muted">
             Set your tastes and walking limit. Turn sample campus events into a day that
-            fits. Event coordinates are unverified; map pins and routes are hidden.
+            fits. Building pins are approximate; walking times are demo estimates, not navigation directions.
           </p>
           <div className="mt-3 flex gap-2">
             <button

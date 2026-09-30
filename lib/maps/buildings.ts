@@ -1,3 +1,4 @@
+import buildingLocations from "@/data/geo/building-locations.json";
 import type { Building } from "@/lib/types";
 
 const STAMP = "2026-09-01T00:00:00.000Z";
@@ -16,8 +17,8 @@ export const BUILDINGS: Building[] = [
       "hillman",
       "gates hillman center",
     ],
-    latitude: 40.44385,
-    longitude: -79.94455,
+    latitude: 40.4435617,
+    longitude: -79.9445696,
     campus_zone: "morewood",
     off_campus: false,
     geojson_feature_id: "ghc",
@@ -40,8 +41,8 @@ export const BUILDINGS: Building[] = [
       "simmons auditorium",
       "tepper simmons auditorium",
     ],
-    latitude: 40.44125,
-    longitude: -79.94195,
+    latitude: 40.4450907,
+    longitude: -79.9453297,
     campus_zone: "forbes",
     off_campus: false,
     geojson_feature_id: "tepper",
@@ -64,8 +65,8 @@ export const BUILDINGS: Building[] = [
       "rangos ballroom",
       "cuc rangos",
     ],
-    latitude: 40.44295,
-    longitude: -79.94175,
+    latitude: 40.443484,
+    longitude: -79.9419789,
     campus_zone: "cut",
     off_campus: false,
     geojson_feature_id: "cuc",
@@ -80,8 +81,8 @@ export const BUILDINGS: Building[] = [
     name: "Wean Hall",
     short_name: "Wean",
     aliases: ["wean", "weh", "wean hall"],
-    latitude: 40.44265,
-    longitude: -79.94585,
+    latitude: 40.4426702,
+    longitude: -79.9457343,
     campus_zone: "morewood",
     off_campus: false,
     geojson_feature_id: "wean",
@@ -96,8 +97,8 @@ export const BUILDINGS: Building[] = [
     name: "Doherty Hall",
     short_name: "DH",
     aliases: ["doherty", "dh", "doherty hall"],
-    latitude: 40.44248,
-    longitude: -79.9444,
+    latitude: 40.4424889,
+    longitude: -79.9445501,
     campus_zone: "morewood",
     off_campus: false,
     geojson_feature_id: "doherty",
@@ -112,8 +113,8 @@ export const BUILDINGS: Building[] = [
     name: "Hunt Library",
     short_name: "Hunt",
     aliases: ["hunt", "hl", "hunt library"],
-    latitude: 40.4411,
-    longitude: -79.9437,
+    latitude: 40.4411106,
+    longitude: -79.9437397,
     campus_zone: "cut",
     off_campus: false,
     geojson_feature_id: "hunt",
@@ -134,8 +135,8 @@ export const BUILDINGS: Building[] = [
       "newell simon hall",
       "newell-simon hall",
     ],
-    latitude: 40.4435,
-    longitude: -79.94565,
+    latitude: 40.4433763,
+    longitude: -79.9456161,
     campus_zone: "morewood",
     off_campus: false,
     geojson_feature_id: "nsh",
@@ -150,8 +151,8 @@ export const BUILDINGS: Building[] = [
     name: "Hamburg Hall",
     short_name: "HBH",
     aliases: ["hamburg", "hbh", "hamburg hall"],
-    latitude: 40.44422,
-    longitude: -79.94505,
+    latitude: 40.4442232,
+    longitude: -79.945546,
     campus_zone: "morewood",
     off_campus: false,
     geojson_feature_id: "hamburg",
@@ -166,8 +167,8 @@ export const BUILDINGS: Building[] = [
     name: "Posner Hall",
     short_name: "Posner",
     aliases: ["posner", "posner hall", "gsia"],
-    latitude: 40.44115,
-    longitude: -79.94285,
+    latitude: 40.4412734,
+    longitude: -79.9421521,
     campus_zone: "forbes",
     off_campus: false,
     geojson_feature_id: "posner",
@@ -182,8 +183,8 @@ export const BUILDINGS: Building[] = [
     name: "Scott Hall",
     short_name: "Scott",
     aliases: ["scott", "scott hall"],
-    latitude: 40.44315,
-    longitude: -79.94655,
+    latitude: 40.4429878,
+    longitude: -79.9467521,
     campus_zone: "west",
     off_campus: false,
     geojson_feature_id: "scott",
@@ -198,8 +199,8 @@ export const BUILDINGS: Building[] = [
     name: "ANSYS Hall",
     short_name: "ANSYS",
     aliases: ["ansys", "ansys hall"],
-    latitude: 40.44238,
-    longitude: -79.94665,
+    latitude: 40.4419592,
+    longitude: -79.9466091,
     campus_zone: "west",
     off_campus: false,
     geojson_feature_id: "ansys",
@@ -214,8 +215,8 @@ export const BUILDINGS: Building[] = [
     name: "Porter Hall",
     short_name: "Porter",
     aliases: ["porter", "porter hall"],
-    latitude: 40.44182,
-    longitude: -79.94635,
+    latitude: 40.4417112,
+    longitude: -79.9462622,
     campus_zone: "west",
     off_campus: false,
     geojson_feature_id: "porter",
@@ -230,8 +231,8 @@ export const BUILDINGS: Building[] = [
     name: "Baker Hall",
     short_name: "Baker",
     aliases: ["baker", "baker hall"],
-    latitude: 40.44155,
-    longitude: -79.94545,
+    latitude: 40.4414944,
+    longitude: -79.9449786,
     campus_zone: "morewood",
     off_campus: false,
     geojson_feature_id: "baker",
@@ -266,4 +267,17 @@ export const BUILDING_BY_ID: Record<string, Building> = Object.fromEntries(
 export function getBuilding(id: string | null | undefined): Building | null {
   if (!id) return null;
   return BUILDING_BY_ID[id] ?? null;
+}
+
+/** Footprint-derived building anchors, never an invented point for an unknown venue. */
+export function getBuildingMapLocation(id: string | null | undefined): {
+  latitude: number;
+  longitude: number;
+  source_url: string;
+  accuracy_note: string;
+} | null {
+  if (!id || !Object.hasOwn(buildingLocations, id)) return null;
+  const location = buildingLocations[id as keyof typeof buildingLocations];
+  if (location.latitude === null || location.longitude === null) return null;
+  return location;
 }

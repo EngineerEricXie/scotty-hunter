@@ -18,16 +18,17 @@ export interface RoadEdge {
 
 const FOOTWAYS = footwayCollection as FeatureCollection<LineString>;
 
-/** ~8m grid so nearby OSM footway ends join at crossings. */
+/** Join only explicit shared OSM vertices, never nearby but separate sidewalks. */
 export function roadNodeKey(point: GeoPoint): string {
-  return `${Math.round(point.latitude / 0.000072)}:${Math.round(point.longitude / 0.000094)}`;
+  return `${point.latitude}:${point.longitude}`;
 }
 
 function cleanLine(raw: GeoPoint[]): GeoPoint[] {
   const points: GeoPoint[] = [];
   for (const point of raw) {
     const last = points[points.length - 1];
-    if (last && last.longitude === point.longitude && last.latitude === point.latitude) continue;
+    if (last && last.longitude === point.longitude && last.latitude === point.latitude)
+      continue;
     points.push(point);
   }
   return points;
@@ -51,7 +52,10 @@ export function linesFromFootwayCollection(
   for (const feature of collection.features) {
     if (feature.geometry?.type !== "LineString") continue;
     const raw = cleanLine(
-      feature.geometry.coordinates.map(([longitude, latitude]) => ({ longitude, latitude })),
+      feature.geometry.coordinates.map(([longitude, latitude]) => ({
+        longitude,
+        latitude,
+      })),
     );
     let current: GeoPoint[] = [];
     const flush = () => {
@@ -71,12 +75,33 @@ export function linesFromFootwayCollection(
 }
 
 export function stitchRoadGraph(lines: GeoPoint[][]): RoadEdge[] {
-  return lines.map((points, id) => ({
-    id,
-    points,
-    start: roadNodeKey(points[0]!),
-    end: roadNodeKey(points[points.length - 1]!),
-  }));
+  const paths = lines.map(cleanLine).filter((points) => points.length >= 2);
+  const uses = new Map<string, number>();
+  for (const points of paths) {
+    for (const point of points) {
+      const key = roadNodeKey(point);
+      uses.set(key, (uses.get(key) ?? 0) + 1);
+    }
+  }
+
+  const edges: RoadEdge[] = [];
+  for (const points of paths) {
+    let start = 0;
+    for (let end = 1; end < points.length; end++) {
+      const key = roadNodeKey(points[end]!);
+      // An OSM way often continues through a junction rather than ending there.
+      // Keep its bends intact and split only at shared vertices or its endpoint.
+      if (end !== points.length - 1 && (uses.get(key) ?? 0) < 2) continue;
+      edges.push({
+        id: edges.length,
+        points: points.slice(start, end + 1),
+        start: roadNodeKey(points[start]!),
+        end: key,
+      });
+      start = end;
+    }
+  }
+  return edges;
 }
 
 let cached: RoadEdge[] | null = null;
@@ -123,7 +148,11 @@ export function addFootwayLayer(map: MapLibreMap) {
 }
 
 export function styleMapFootways(map: MapLibreMap) {
-  for (const layer of ["road_path_pedestrian", "bridge_path_pedestrian", "tunnel_path_pedestrian"]) {
+  for (const layer of [
+    "road_path_pedestrian",
+    "bridge_path_pedestrian",
+    "tunnel_path_pedestrian",
+  ]) {
     if (!map.getLayer(layer)) continue;
     map.setPaintProperty(layer, "line-color", "#c41230");
     map.setPaintProperty(layer, "line-dasharray", [2, 1.4]);
@@ -131,8 +160,14 @@ export function styleMapFootways(map: MapLibreMap) {
   }
 }
 
-export function edgesTouching(edges: RoadEdge[], key: string, exceptId?: number): RoadEdge[] {
-  return edges.filter((edge) => edge.id !== exceptId && (edge.start === key || edge.end === key));
+export function edgesTouching(
+  edges: RoadEdge[],
+  key: string,
+  exceptId?: number,
+): RoadEdge[] {
+  return edges.filter(
+    (edge) => edge.id !== exceptId && (edge.start === key || edge.end === key),
+  );
 }
 
 export function nearestRoadHit(
@@ -146,7 +181,12 @@ export function nearestRoadHit(
     for (let index = 0; index < edge.points.length; index++) {
       const point = edge.points[index];
       if (!point) continue;
-      const meters = haversineMeters(latitude, longitude, point.latitude, point.longitude);
+      const meters = haversineMeters(
+        latitude,
+        longitude,
+        point.latitude,
+        point.longitude,
+      );
       if (meters < bestMeters) {
         bestMeters = meters;
         best = { edge, index, point };
@@ -156,7 +196,11 @@ export function nearestRoadHit(
   return best;
 }
 
-export function nearestRoadEdge(edges: RoadEdge[], longitude: number, latitude: number): RoadEdge | null {
+export function nearestRoadEdge(
+  edges: RoadEdge[],
+  longitude: number,
+  latitude: number,
+): RoadEdge | null {
   return nearestRoadHit(edges, longitude, latitude)?.edge ?? null;
 }
 
