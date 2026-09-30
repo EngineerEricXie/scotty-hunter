@@ -159,10 +159,6 @@ export function MapExperience() {
     syncPanelUrl(next, extra);
   }
 
-  function closePlan() {
-    closePanel();
-  }
-
   function openPlan(extra?: Record<string, string>) {
     openPanel("plan", extra);
   }
@@ -328,7 +324,7 @@ export function MapExperience() {
 
   return (
     <div
-      className="app-shell fixed inset-x-0 w-full overflow-hidden bg-canvas"
+      className={`app-shell ${panel ? "has-panel" : ""} fixed inset-x-0 w-full overflow-hidden bg-canvas`}
       style={{ top: "var(--app-offset-top, 0px)", height: "var(--app-height, 100dvh)" }}
     >
       <div

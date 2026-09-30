@@ -1350,3 +1350,44 @@ select {
     font-size: 9px;
   }
 }
+
+/* Keep summaries and overlay content legible in every theme surface. */
+.pixel-panel.bg-ink {
+  background: var(--ink);
+  color: var(--gold);
+  border-color: var(--ink);
+}
+.app-overlay-content {
+  background: #f5f3ed;
+  border-radius: 22px;
+  margin-top: 14px;
+  height: calc(100% - 14px);
+  box-shadow: 0 20px 60px #14261c30;
+}
+.has-panel .app-navigation {
+  left: 50%;
+}
+.app-overlay-content .text-\[8px\] {
+  font-size: 10px;
+}
+.event-details .border-4 {
+  border-width: 1px;
+  border-color: #cfd9c7;
+  border-radius: 10px;
+}
+@media (max-width: 768px) {
+  .discovery-panel {
+    background: #fffdf8;
+  }
+  .illustrated-map {
+    top: 212px;
+    height: calc(100% - 357px);
+  }
+  .app-overlay-content {
+    margin: 10px 8px 0;
+    width: calc(100% - 16px);
+  }
+  .map-schematic-note {
+    bottom: -6px;
+  }
+}

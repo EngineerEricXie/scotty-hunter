@@ -39,14 +39,15 @@ export function PlannerExperience({
 }) {
   const params = useSearchParams();
   const [prefs, setPrefs] = useState<UserPreference>(loadPreferences);
-  const [date, setDate] = useState(() => dateOverride ?? params.get("date") ?? demoToday());
+  const [date, setDate] = useState(
+    () => dateOverride ?? params.get("date") ?? demoToday(),
+  );
   const [mode, setMode] = useState<"day" | "week">("day");
   const [plan, setPlan] = useState<Itinerary | null>(null);
   const [week, setWeek] = useState<WeekPlan | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [events, setEvents] = useState<Record<string, Event>>({});
-
 
   function persist(next: UserPreference, rerun = false) {
     setPrefs(next);
@@ -55,7 +56,12 @@ export function PlannerExperience({
   }
 
   function addTodo(eventId: string) {
-    const event = events[eventId] ?? week?.days.flatMap((day) => day.itinerary.events).find((item) => item.id === eventId) ?? plan?.events.find((item) => item.id === eventId);
+    const event =
+      events[eventId] ??
+      week?.days
+        .flatMap((day) => day.itinerary.events)
+        .find((item) => item.id === eventId) ??
+      plan?.events.find((item) => item.id === eventId);
     if (!event) return;
     upsertTodo({
       id: `todo-${event.id}`,
@@ -71,7 +77,11 @@ export function PlannerExperience({
     });
   }
 
-  async function submit(override?: { prefs?: UserPreference; mode?: "day" | "week"; date?: string }) {
+  async function submit(override?: {
+    prefs?: UserPreference;
+    mode?: "day" | "week";
+    date?: string;
+  }) {
     const nextPrefs = override?.prefs ?? prefs;
     const nextMode = override?.mode ?? mode;
     const nextDate = override?.date ?? date;
@@ -94,7 +104,9 @@ export function PlannerExperience({
       if (nextMode === "week" && json.week) {
         setWeek(json.week);
         setPlan(null);
-        const ids = json.week.days.flatMap((day) => day.itinerary.events.map((event) => event.id));
+        const ids = json.week.days.flatMap((day) =>
+          day.itinerary.events.map((event) => event.id),
+        );
         saveLastPlanEventIds(ids);
         const map: Record<string, Event> = {};
         for (const event of json.week.days.flatMap((day) => day.itinerary.events)) {
@@ -122,7 +134,9 @@ export function PlannerExperience({
     setError("");
     if (!plan) return;
     try {
-      const calendar = new Blob([itineraryToIcs(plan)], { type: "text/calendar;charset=utf-8" });
+      const calendar = new Blob([itineraryToIcs(plan)], {
+        type: "text/calendar;charset=utf-8",
+      });
       downloadBlob(calendar, `scottybites-${plan.date}.ics`);
     } catch (error) {
       setError(error instanceof Error ? error.message : "Calendar export failed.");
@@ -156,7 +170,9 @@ export function PlannerExperience({
 
   useEffect(() => {
     if (!plan && !week) return;
-    document.querySelector("[data-map-panel-scroll]")?.scrollTo({ top: 0, behavior: "smooth" });
+    document
+      .querySelector("[data-map-panel-scroll]")
+      ?.scrollTo({ top: 0, behavior: "smooth" });
   }, [plan, week]);
 
   const overlay = variant === "overlay";
@@ -180,8 +196,8 @@ export function PlannerExperience({
             )}
           </div>
           <p className="mt-2 text-sm font-bold leading-6 text-muted">
-            Ranking stays deterministic — not an LLM. Demo: load the persona, plan today, then see it
-            on the map.
+            Set your tastes and walking limit. Turn sample campus events into a day that
+            fits, then see your stops on the map.
           </p>
           <div className="mt-3 flex gap-2">
             <button
@@ -228,7 +244,11 @@ export function PlannerExperience({
           </div>
         </div>
 
-        {error && <p className="text-sm font-bold text-gold">{error}</p>}
+        {error && (
+          <p role="alert" className="text-sm font-bold text-tartan">
+            {error}
+          </p>
+        )}
 
         {plan && (
           <div className="space-y-3">
@@ -242,12 +262,20 @@ export function PlannerExperience({
             >
               SEE ITINERARY ON MAP
             </button>
-            <button type="button" onClick={downloadIcs} className="pixel-btn min-h-11 w-full bg-card text-sm">
+            <button
+              type="button"
+              onClick={downloadIcs}
+              className="pixel-btn min-h-11 w-full bg-card text-sm"
+            >
               ADD DAY TO CALENDAR (.ICS)
             </button>
             <UnavailableIntegration
               name="Google Calendar"
-              detail={IS_STATIC_DEMO ? "Download the sample itinerary as an ICS file and import it into your calendar." : "OAuth is scaffolded. Without client credentials, export an ICS file instead."}
+              detail={
+                IS_STATIC_DEMO
+                  ? "Download the sample itinerary as an ICS file and import it into your calendar."
+                  : "OAuth is scaffolded. Without client credentials, export an ICS file instead."
+              }
             />
           </div>
         )}

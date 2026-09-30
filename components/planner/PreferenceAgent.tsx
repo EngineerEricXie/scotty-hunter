@@ -4,8 +4,14 @@ import { IS_STATIC_DEMO } from "@/lib/runtime";
 import { appFetch } from "@/lib/api-client";
 import { useEffect, useState } from "react";
 import type { UserPreference } from "@/lib/types";
-import { describePreferences, englishPreferenceSummary } from "@/lib/personalization/apply-patch";
-import { applyDemoPersona, DEMO_PERSONA_UTTERANCE } from "@/lib/personalization/demo-persona";
+import {
+  describePreferences,
+  englishPreferenceSummary,
+} from "@/lib/personalization/apply-patch";
+import {
+  applyDemoPersona,
+  DEMO_PERSONA_UTTERANCE,
+} from "@/lib/personalization/demo-persona";
 
 export function PreferenceAgent({
   value,
@@ -31,21 +37,33 @@ export function PreferenceAgent({
   useEffect(() => {
     appFetch("/api/preferences/parse")
       .then((res) => res.json())
-      .then((json: { agent_ready?: boolean; provider?: string; model?: string | null }) => {
-        setAgentReady(Boolean(json.agent_ready));
-        if (json.agent_ready && json.provider === "grok") {
-          setAgentLabel(
-            json.model ? `Using Grok (${json.model}) for preference parsing.` : "Using Grok for preference parsing.",
-          );
-        } else if (json.agent_ready) {
-          setAgentLabel("Using your configured LLM API.");
-        } else {
-          setAgentLabel(IS_STATIC_DEMO ? "Local preference parser · no account or API key needed." : "GROK_API not detected — local parser only.");
-        }
-      })
+      .then(
+        (json: { agent_ready?: boolean; provider?: string; model?: string | null }) => {
+          setAgentReady(Boolean(json.agent_ready));
+          if (json.agent_ready && json.provider === "grok") {
+            setAgentLabel(
+              json.model
+                ? `Using Grok (${json.model}) for preference parsing.`
+                : "Using Grok for preference parsing.",
+            );
+          } else if (json.agent_ready) {
+            setAgentLabel("Using your configured LLM API.");
+          } else {
+            setAgentLabel(
+              IS_STATIC_DEMO
+                ? "Local preference parser · no account or API key needed."
+                : "GROK_API not detected — local parser only.",
+            );
+          }
+        },
+      )
       .catch(() => {
         setAgentReady(false);
-        setAgentLabel(IS_STATIC_DEMO ? "Local preference parser · no account or API key needed." : "GROK_API not detected — local parser only.");
+        setAgentLabel(
+          IS_STATIC_DEMO
+            ? "Local preference parser · no account or API key needed."
+            : "GROK_API not detected — local parser only.",
+        );
       });
   }, []);
 
@@ -144,7 +162,11 @@ export function PreferenceAgent({
       >
         {busy ? "Understanding…" : "Update preferences"}
       </button>
-      {error && <p className="mt-2 text-sm font-bold text-gold">{error}</p>}
+      {error && (
+        <p role="alert" className="mt-2 text-sm font-bold text-tartan">
+          {error}
+        </p>
+      )}
       {warning && <p className="mt-2 text-sm font-bold text-tartan">{warning}</p>}
       {value.preference_summary && (
         <div className="mt-3 border-4 border-ink bg-[#fffaf0] px-3 py-2 text-sm leading-6">

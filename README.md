@@ -31,13 +31,13 @@ Source registry
 
 Replaceable adapters:
 
-| Interface | Local / demo | Real (deferred without credentials) |
-| --- | --- | --- |
-| `EventRepository` | `LocalFixtureEventRepository` | `SupabaseEventRepository` |
-| `EventExtractor` | `HeuristicEventExtractor` | `LLMEventExtractor` |
-| `CalendarService` | `MockCalendarService` + ICS | `GoogleCalendarService` |
-| `FoodVisionService` | `MockFoodVisionService` | `GrokFoodVisionService` (`GROK_API`) |
-| Map | Pixel campus map (default) + MapLibre/Carto GEO toggle | optional MapTiler/Mapbox token |
+| Interface           | Local / demo                                           | Real (deferred without credentials)  |
+| ------------------- | ------------------------------------------------------ | ------------------------------------ |
+| `EventRepository`   | `LocalFixtureEventRepository`                          | `SupabaseEventRepository`            |
+| `EventExtractor`    | `HeuristicEventExtractor`                              | `LLMEventExtractor`                  |
+| `CalendarService`   | `MockCalendarService` + ICS                            | `GoogleCalendarService`              |
+| `FoodVisionService` | `MockFoodVisionService`                                | `GrokFoodVisionService` (`GROK_API`) |
+| Map                 | Pixel campus map (default) + MapLibre/Carto GEO toggle | optional MapTiler/Mapbox token       |
 
 ## Data sources
 
@@ -57,18 +57,18 @@ A failed live crawl cannot crash the app. `POST /api/crawl` is isolated per sour
 
 Copy `.env.example`. All keys are optional. Defaults already run the local demo.
 
-| Variable | Needed for |
-| --- | --- |
-| `NEXT_PUBLIC_DEMO_MODE` | Force fixture repository (default `true`) |
-| `NEXT_PUBLIC_DEMO_DATE` | Calendar day labeled “Today” (default `2026-09-12`) |
-| `NEXT_PUBLIC_MAP_STYLE_URL` | MapLibre style (default OpenFreeMap liberty) |
-| `GROK_API` | xAI Grok for preference parsing and food-photo vision |
-| `GROK_BASE_URL` / `GROK_MODEL` / `GROK_VISION_MODEL` | Optional Grok host/model (defaults: `https://api.x.ai/v1`, `grok-4.6`) |
-| `EXTRACTION_PROVIDER=llm` + `OPENAI_API_KEY` | Real LLM event extraction (OpenAI-compatible; not used for preferences when `GROK_API` is set) |
-| `OPENAI_BASE_URL` / `OPENAI_MODEL` | Custom host (default OpenAI; IFM: `https://api.ifm.ai/v1` + `IFM/K2-Horizon-375B-A23B`) |
-| `NEXT_PUBLIC_SUPABASE_URL` + anon/service keys | Postgres backend |
-| `GOOGLE_CALENDAR_CLIENT_ID` / secret / redirect | Google Calendar OAuth |
-| `MAPBOX_TOKEN` / `MAPTILER_API_KEY` | Alternate map tiles |
+| Variable                                             | Needed for                                                                                     |
+| ---------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| `NEXT_PUBLIC_DEMO_MODE`                              | Force fixture repository (default `true`)                                                      |
+| `NEXT_PUBLIC_DEMO_DATE`                              | Calendar day labeled “Today” (default `2026-09-12`)                                            |
+| `NEXT_PUBLIC_MAP_STYLE_URL`                          | MapLibre style (default OpenFreeMap liberty)                                                   |
+| `GROK_API`                                           | xAI Grok for preference parsing and food-photo vision                                          |
+| `GROK_BASE_URL` / `GROK_MODEL` / `GROK_VISION_MODEL` | Optional Grok host/model (defaults: `https://api.x.ai/v1`, `grok-4.6`)                         |
+| `EXTRACTION_PROVIDER=llm` + `OPENAI_API_KEY`         | Real LLM event extraction (OpenAI-compatible; not used for preferences when `GROK_API` is set) |
+| `OPENAI_BASE_URL` / `OPENAI_MODEL`                   | Custom host (default OpenAI; IFM: `https://api.ifm.ai/v1` + `IFM/K2-Horizon-375B-A23B`)        |
+| `NEXT_PUBLIC_SUPABASE_URL` + anon/service keys       | Postgres backend                                                                               |
+| `GOOGLE_CALENDAR_CLIENT_ID` / secret / redirect      | Google Calendar OAuth                                                                          |
+| `MAPBOX_TOKEN` / `MAPTILER_API_KEY`                  | Alternate map tiles                                                                            |
 
 Do not invent fake keys. Leave them blank until a human creates the provider account.
 
@@ -121,8 +121,9 @@ These are intentionally unfinished because they need a human:
 `npm run build:pages` creates a standalone site in `out/`, designed for
 `https://<owner>.github.io/scotty-hunter/`. Set `NEXT_PUBLIC_BASE_PATH` to a different
 subdirectory (or an empty string for a root-domain deployment) before building.
-The included GitHub Actions workflow tests, builds, and publishes `main`; choose
-**GitHub Actions** as the source under the repository's **Settings → Pages**.
+The project is published within the existing homepage at `/scotty-hunter/`. The standalone Pages workflow is manual-only to avoid two repositories competing for the same URL. To use standalone hosting instead, choose **GitHub Actions** under this repository's **Settings → Pages**, then run the deployment workflow.
+
+For homepage deployment, copy the final `out/` contents into its `scotty-hunter/` directory. Preserve the homepage's Jekyll build; include `_next`, `"__next*"`, and `_not-found` in its `_config.yml`. Never add a root `.nojekyll` to that homepage. Rebuild from source for each update and replace the generated folder as one deployment.
 
 This public build is an explicitly labeled, no-key demo:
 
@@ -132,7 +133,7 @@ This public build is an explicitly labeled, no-key demo:
 - Browser-local preferences, points, and progress; no account or database
 - Photo results are prewritten samples. Photos stay in the browser and are not uploaded
   or analyzed. Event listings, availability, and dietary details are not live or verified
-- The optional interactive map uses public OpenFreeMap tiles
+- The default illustrated map works without external map services; the optional street map uses public OpenFreeMap tiles
 
 The build uses an isolated temporary copy that omits server API routes and does not
 copy `.env` files. It leaves the original source untouched. `npm run dev` and

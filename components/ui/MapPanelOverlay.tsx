@@ -74,7 +74,7 @@ export function MapPanelOverlay({
           aria-modal="true"
           aria-label={closeLabel.replace(/^Close /, "")}
           tabIndex={-1}
-          className="pointer-events-auto h-full w-full max-w-lg overflow-y-auto overscroll-contain outline-none"
+          className="app-overlay-content pointer-events-auto h-full w-full max-w-lg overflow-y-auto overscroll-contain outline-none"
           data-map-panel-scroll
         >
           {children}
