@@ -114,7 +114,7 @@ These are intentionally unfinished because they need a human:
 - Indoor floor geometry is not modeled.
 - Google Calendar is ICS-only until OAuth exists.
 - Photo labels are mocked.
-- Event/building coordinates are unverified demo data, not navigation guidance. Event pins, location-based recentering, meal-route overlays, illustrated campus maps, and synthetic building footprints are removed. Use the event list and planner for the sample events.
+- Event pins default on and can be toggled with the Event pins switch; the choice is saved in this browser. Building-level anchors are derived from named OpenStreetMap footprints checked September 30, 2026 (`data/geo/building-locations.json` includes source URLs); they are not surveyed entrances or room locations. The unspecified Craig Street event stays list-only. Meal-route overlays and illustrated maps remain removed. Planner walking times remain demo estimates, not navigation guidance.
 
 ## GitHub Pages demo
 
@@ -133,9 +133,15 @@ This public build is an explicitly labeled, no-key demo:
 - Browser-local preferences, points, and progress; no account or database
 - Photo results are prewritten samples. Photos stay in the browser and are not uploaded
   or analyzed. Event listings, availability, and dietary details are not live or verified
-- The street map uses public OpenFreeMap tiles with an OpenStreetMap fallback and requires network access. Event lists and planning remain available without external map services. Event pins and route overlays are hidden because their locations are unverified.
+- The street map uses public OpenFreeMap tiles with an OpenStreetMap fallback and requires network access. Event lists and planning remain available without external map services. Event pins use source-backed approximate building locations. No meal-route overlays or synthetic campus maps are shown.
 
 The build uses an isolated temporary copy that omits server API routes and does not
 copy `.env` files. It leaves the original source untouched. `npm run dev` and
 `npm run build && npm start` still run the full Next.js app with its optional server
 integrations. Never add private keys to `NEXT_PUBLIC_*` variables or to this static site.
+
+### Map location sources and companion movement
+
+Building anchors are footprint centroids from [OpenStreetMap contributors](https://www.openstreetmap.org/copyright). Tepper's location north of Forbes is also cross-checked against [CMU's official directions](https://www.cmu.edu/tepper/directions). Source object IDs, versions, retrieval date, and point methodology are recorded in `data/geo/building-locations.json`. Demo events themselves remain samples, not verified live listings.
+
+Scotty is a decorative campus companion, not walking-route guidance. Its path graph joins existing OSM footways at shared vertices so it can explore connected campus paths rather than bounce along one line. Reduced-motion preferences stop the wandering animation.

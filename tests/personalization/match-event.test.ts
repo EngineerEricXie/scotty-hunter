@@ -161,7 +161,7 @@ describe("personalization matching", () => {
       id: "farther",
       title: "Farther",
       start_time: zonedWallTimeToIso(2026, 9, 12, 12, 0),
-      building_id: "tepper",
+      building_id: "cuc",
     });
     expect(scoreOf(near).totalScore).toBeGreaterThan(scoreOf(farther).totalScore);
   });

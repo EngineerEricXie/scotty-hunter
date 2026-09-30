@@ -1,13 +1,21 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Map as MapLibreMap, NavigationControl, LngLatBounds } from "maplibre-gl";
+import { Map as MapLibreMap, Marker, NavigationControl, LngLatBounds } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { APP_CONFIG, CMU_MAP_CENTER } from "@/lib/config";
 import { ScottyWanderer } from "@/components/map/ScottyWanderer";
-import { CMU_CAMPUS_RING } from "@/lib/maps/campus-mask";
+import { BUILDINGS, getBuildingMapLocation } from "@/lib/maps/buildings";
 import { addFootwayLayer } from "@/lib/maps/road-graph";
 import { VIEWPORT_SYNC_EVENT } from "@/lib/ui/viewport-sync";
+
+import type { Event } from "@/lib/types";
+import {
+  clusterEvents,
+  clusterHourLabel,
+  pickClusterRepresentative,
+} from "@/lib/maps/cluster-events";
+import { createFoodMarkerElement } from "@/components/map/FoodMarker";
 
 const NO_LURES: string[] = [];
 
@@ -24,7 +32,21 @@ const OSM_FALLBACK = {
   layers: [{ id: "osm", type: "raster" as const, source: "osm" }],
 };
 
-export function CampusMap({ onScottyClick }: { onScottyClick?: () => void }) {
+export function CampusMap({
+  events,
+  selectedId,
+  plannedIds,
+  pinsVisible,
+  onOpen,
+  onScottyClick,
+}: {
+  events: Event[];
+  selectedId: string | null;
+  plannedIds: string[];
+  pinsVisible: boolean;
+  onOpen: (events: Event[]) => void;
+  onScottyClick?: () => void;
+}) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
   const [readyMap, setReadyMap] = useState<MapLibreMap | null>(null);
@@ -65,7 +87,10 @@ export function CampusMap({ onScottyClick }: { onScottyClick?: () => void }) {
       if (!framed) {
         framed = true;
         map.fitBounds(campusLngLatBounds(), {
-          padding: { top: 136, bottom: 148, left: 48, right: 72 },
+          padding:
+            window.innerWidth <= 768
+              ? { top: 240, bottom: 225, left: 32, right: 32 }
+              : { top: 136, bottom: 148, left: 48, right: 72 },
           pitch: 0,
           bearing: 0,
           duration: 0,
@@ -140,6 +165,48 @@ export function CampusMap({ onScottyClick }: { onScottyClick?: () => void }) {
     };
   }, []);
 
+  useEffect(() => {
+    if (!readyMap || !pinsVisible) return;
+    let markers: Marker[] = [];
+    const clear = () => {
+      markers.forEach((marker) => marker.remove());
+      markers = [];
+    };
+    const render = () => {
+      clear();
+      const clusters = clusterEvents(events, (longitude, latitude) => {
+        const point = readyMap.project([longitude, latitude]);
+        return { x: point.x, y: point.y };
+      });
+      for (const cluster of clusters) {
+        const representative = pickClusterRepresentative(cluster, plannedIds, selectedId);
+        const selected = cluster.events.some((event) => event.id === selectedId);
+        const planned = cluster.events.some((event) => plannedIds.includes(event.id));
+        const element = createFoodMarkerElement(representative, selected, planned, {
+          count: cluster.events.length,
+          hourLabel: clusterHourLabel(cluster),
+        });
+        element.dataset.buildings = [
+          ...new Set(cluster.events.map((event) => event.building_id)),
+        ]
+          .sort()
+          .join(",");
+        element.addEventListener("click", () => onOpen(cluster.events));
+        markers.push(
+          new Marker({ element, anchor: "bottom" })
+            .setLngLat([cluster.longitude, cluster.latitude])
+            .addTo(readyMap),
+        );
+      }
+    };
+    render();
+    readyMap.on("moveend", render);
+    return () => {
+      readyMap.off("moveend", render);
+      clear();
+    };
+  }, [readyMap, events, selectedId, plannedIds, pinsVisible, onOpen]);
+
   return (
     <div
       className="absolute inset-0"
@@ -173,8 +240,9 @@ export function CampusMap({ onScottyClick }: { onScottyClick?: () => void }) {
 
 function campusLngLatBounds(): LngLatBounds {
   const bounds = new LngLatBounds();
-  for (const [lng, lat] of CMU_CAMPUS_RING) {
-    bounds.extend([lng, lat]);
+  for (const building of BUILDINGS) {
+    const location = getBuildingMapLocation(building.id);
+    if (location) bounds.extend([location.longitude, location.latitude]);
   }
   return bounds;
 }

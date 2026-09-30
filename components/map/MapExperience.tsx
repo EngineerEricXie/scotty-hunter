@@ -2,13 +2,21 @@
 
 import { assetPath } from "@/lib/runtime";
 import dynamic from "next/dynamic";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { useSearchParams } from "next/navigation";
 import type { Event } from "@/lib/types";
 import { calendarDateInZone } from "@/lib/timezone";
 import { DEMO_CLOCK_EVENT, demoToday } from "@/lib/demo-clock";
 import { eventVisible, type MapFilters } from "@/lib/filters";
 import { FilterBar } from "@/components/map/FilterBar";
+import { getBuildingMapLocation } from "@/lib/maps/buildings";
+import { ClusterSheet } from "@/components/map/ClusterSheet";
+import {
+  defaultPinVisibility,
+  loadPinVisibility,
+  savePinVisibility,
+  subscribePinVisibility,
+} from "@/lib/maps/map-preferences";
 import { EventBottomSheet } from "@/components/map/EventBottomSheet";
 import { BottomNav } from "@/components/ui/BottomNav";
 import { MapPanelOverlay } from "@/components/ui/MapPanelOverlay";
@@ -99,6 +107,21 @@ export function MapExperience() {
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
   const [error, setError] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [clusterEvents, setClusterEvents] = useState<Event[] | null>(null);
+  const pinsVisible = useSyncExternalStore(
+    subscribePinVisibility,
+    loadPinVisibility,
+    defaultPinVisibility,
+  );
+  const openEvents = useCallback((group: Event[]) => {
+    if (group.length === 1) {
+      setClusterEvents(null);
+      setSelectedId(group[0].id);
+    } else {
+      setSelectedId(null);
+      setClusterEvents(group);
+    }
+  }, []);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [listOpen, setListOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -148,6 +171,7 @@ export function MapExperience() {
     setPanel(next);
     setPlanDate(next === "plan" ? (extra?.date ?? null) : null);
     setSelectedId(null);
+    setClusterEvents(null);
     syncPanelUrl(next, extra);
   }
 
@@ -191,6 +215,8 @@ export function MapExperience() {
     const onReset = () => {
       setPlannedIds([]);
       setSelectedId(null);
+      setClusterEvents(null);
+      savePinVisibility(true);
       setFilters((prev) => ({ ...prev, date: demoToday() }));
     };
     const onClock = () => {
@@ -214,6 +240,7 @@ export function MapExperience() {
       setPanel(next);
       setPlanDate(query.get("date"));
       setSelectedId(null);
+      setClusterEvents(null);
       if (!next) {
         const ids = loadLastPlanEventIds();
         setPlannedIds(ids);
@@ -287,6 +314,9 @@ export function MapExperience() {
   const todayCount = visible.filter(
     (event) => calendarDateInZone(new Date(event.start_time)) === filters.date,
   ).length;
+  const unmappedCount = visible.filter(
+    (event) => !getBuildingMapLocation(event.building_id),
+  ).length;
   const plannedCount = visible.filter((event) => plannedIds.includes(event.id)).length;
   return (
     <div
@@ -298,7 +328,14 @@ export function MapExperience() {
         inert={!!panel}
       >
         <div className="campus-map-frame">
-          <CampusMap onScottyClick={() => openPanel("scotty")} />
+          <CampusMap
+            events={visible}
+            selectedId={selectedId}
+            plannedIds={plannedIds}
+            pinsVisible={pinsVisible}
+            onOpen={openEvents}
+            onScottyClick={() => openPanel("scotty")}
+          />
         </div>
 
         <aside
@@ -439,6 +476,7 @@ export function MapExperience() {
                     selected={event.id === selectedId}
                     onSelect={(event) => {
                       setSelectedId(event.id);
+                      setClusterEvents(null);
                       setListOpen(false);
                     }}
                   />
@@ -447,7 +485,10 @@ export function MapExperience() {
             {APP_CONFIG.demoMode && (
               <p className="demo-disclaimer">
                 Interactive demo · Sample events from Sep 12–18, 2026. These are not live
-                food listings. Your plans stay in this browser.
+                food listings. Pins mark approximate buildings, not rooms or entrances.
+                {unmappedCount > 0 &&
+                  ` ${unmappedCount} event${unmappedCount === 1 ? " has" : "s have"} no precise venue and remain in the list only.`}{" "}
+                Your plans stay in this browser.
               </p>
             )}
           </div>
@@ -470,14 +511,39 @@ export function MapExperience() {
             <small>Pittsburgh, Pennsylvania</small>
           </span>
         </div>
-        {!selected && (
+        <button
+          type="button"
+          className="map-pins-toggle"
+          role="switch"
+          aria-label="Event pins"
+          aria-checked={pinsVisible}
+          onClick={() => {
+            savePinVisibility(!pinsVisible);
+            setClusterEvents(null);
+          }}
+        >
+          <MapPin size={18} aria-hidden="true" />
+          Event pins {pinsVisible ? "on" : "off"}
+        </button>
+        {!selected && !clusterEvents && (
           <div className="map-hint">
             <span className="map-hint-dot" />
-            Event pins hidden · Locations unverified
+            {pinsVisible
+              ? "Demo events · Building-level pins"
+              : "Event pins off · Use the list"}
             {plannedCount > 0 ? ` · ${plannedCount} planned` : ""}
           </div>
         )}
 
+        <ClusterSheet
+          events={clusterEvents ?? []}
+          plannedIds={plannedIds}
+          onSelect={(event) => {
+            setClusterEvents(null);
+            setSelectedId(event.id);
+          }}
+          onClose={() => setClusterEvents(null)}
+        />
         <EventBottomSheet
           event={selected}
           onClose={() => setSelectedId(null)}

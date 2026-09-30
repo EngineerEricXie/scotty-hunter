@@ -13,6 +13,7 @@ function createElement(name: string): HTMLButtonElement {
   const button = document.createElement("button");
   button.type = "button";
   button.className = "scotty-wanderer";
+  button.title = "Campus companion animation";
   button.setAttribute("aria-label", `${name} wandering campus`);
   button.innerHTML = `<img alt="" class="pixel-sprite" src="${SCOTTY_MAP_SPRITES.south}" width="48" height="48" />`;
   return button;
@@ -44,7 +45,7 @@ export function ScottyWanderer({
     };
     el.addEventListener("click", onPress);
 
-    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const motionPreference = window.matchMedia("(prefers-reduced-motion: reduce)");
     const machine = createWanderMachine({
       now: performance.now(),
       lureBuildingIds: () => luresRef.current,
@@ -62,20 +63,33 @@ export function ScottyWanderer({
     let facing: ScottyFacing = first.facing;
     if (img) img.src = SCOTTY_MAP_SPRITES[facing];
 
-    let raf = 0;
+    let raf: number | null = null;
     let last = performance.now();
+    let disposed = false;
     const frame = (now: number) => {
-      const snap = machine.tick(now, reduced ? 0 : now - last);
+      raf = null;
+      if (disposed || motionPreference.matches || document.hidden) return;
+      const snap = machine.tick(now, now - last);
       last = now;
       marker.setLngLat([snap.point.longitude, snap.point.latitude]);
-      el.dataset.walking = !reduced && snap.walking ? "true" : "false";
+      el.dataset.walking = snap.walking ? "true" : "false";
       if (img && snap.facing !== facing) {
         facing = snap.facing;
         img.src = SCOTTY_MAP_SPRITES[facing];
       }
       raf = window.requestAnimationFrame(frame);
     };
-    if (!reduced) raf = window.requestAnimationFrame(frame);
+    const syncMotion = () => {
+      if (raf !== null) window.cancelAnimationFrame(raf);
+      raf = null;
+      el.dataset.walking = "false";
+      if (disposed || motionPreference.matches || document.hidden) return;
+      last = performance.now();
+      raf = window.requestAnimationFrame(frame);
+    };
+    motionPreference.addEventListener("change", syncMotion);
+    document.addEventListener("visibilitychange", syncMotion);
+    syncMotion();
 
     const unsub = onScottyChange(() => {
       const next = loadScotty().name || "Scotty";
@@ -83,7 +97,10 @@ export function ScottyWanderer({
     });
 
     return () => {
-      window.cancelAnimationFrame(raf);
+      disposed = true;
+      if (raf !== null) window.cancelAnimationFrame(raf);
+      motionPreference.removeEventListener("change", syncMotion);
+      document.removeEventListener("visibilitychange", syncMotion);
       unsub();
       el.removeEventListener("click", onPress);
       marker.remove();

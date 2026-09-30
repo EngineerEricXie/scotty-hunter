@@ -1,5 +1,5 @@
 import type { Event } from "@/lib/types";
-import { getBuilding } from "@/lib/maps/buildings";
+import { getBuilding, getBuildingMapLocation } from "@/lib/maps/buildings";
 import { markerHour } from "@/lib/food-ui";
 
 export const CLUSTER_PIXEL_THRESHOLD = 52;
@@ -13,9 +13,9 @@ export interface MapEventCluster {
 }
 
 export function eventLngLat(event: Event): { lng: number; lat: number } | null {
-  const building = getBuilding(event.building_id);
-  if (!building) return null;
-  return { lng: building.longitude, lat: building.latitude };
+  const location = getBuildingMapLocation(event.building_id);
+  if (!location) return null;
+  return { lng: location.longitude, lat: location.latitude };
 }
 
 function sortEvents(events: Event[]): Event[] {
@@ -116,7 +116,9 @@ export function clusterHourLabel(cluster: MapEventCluster): string {
   const hours = new Set(cluster.events.map((event) => markerHour(event.start_time)));
   if (hours.size === 1) return [...hours][0]!;
   const buildingIds = new Set(
-    cluster.events.map((event) => event.building_id).filter((id): id is string => Boolean(id)),
+    cluster.events
+      .map((event) => event.building_id)
+      .filter((id): id is string => Boolean(id)),
   );
   if (buildingIds.size === 1) {
     return getBuilding([...buildingIds][0]!)?.short_name ?? "HERE";

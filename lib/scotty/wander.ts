@@ -2,7 +2,6 @@ import { assetPath } from "@/lib/runtime";
 import {
   campusFootwayGraph,
   directedRoadPoints,
-  edgesTouching,
   nearestRoadHit,
   roadEndKey,
   type GeoPoint,
@@ -51,7 +50,10 @@ export function positionAlongPath(
     return {
       point: first,
       facing: next
-        ? facingFromDelta(next.longitude - first.longitude, next.latitude - first.latitude)
+        ? facingFromDelta(
+            next.longitude - first.longitude,
+            next.latitude - first.latitude,
+          )
         : "south",
       done: path.length === 1,
     };
@@ -82,7 +84,10 @@ export function positionAlongPath(
   const prev = path[path.length - 2] ?? last;
   return {
     point: last,
-    facing: facingFromDelta(last.longitude - prev.longitude, last.latitude - prev.latitude),
+    facing: facingFromDelta(
+      last.longitude - prev.longitude,
+      last.latitude - prev.latitude,
+    ),
     done: true,
   };
 }
@@ -127,23 +132,33 @@ function lurePoint(buildingId: string): GeoPoint | null {
 }
 
 function pickNextEdge(
-  edges: RoadEdge[],
+  byNode: Map<string, RoadEdge[]>,
+  visits: Map<number, number>,
   atKey: string,
   currentId: number,
   rng: () => number,
   lureBuildingIds: string[],
 ): RoadEdge | null {
-  const connected = edgesTouching(edges, atKey, currentId);
-  const pool = connected.length > 0 ? connected : edgesTouching(edges, atKey);
-  if (pool.length === 0) return null;
-  const lures = lureBuildingIds.map(lurePoint).filter((point): point is GeoPoint => point !== null);
+  const touching = byNode.get(atKey) ?? [];
+  const onward = touching.filter((edge) => edge.id !== currentId);
+  const connected = onward.length > 0 ? onward : touching;
+  if (connected.length === 0) return null;
+  // Explore quieter branches before returning to familiar ones. Food lures can
+  // break ties, but cannot keep Scotty circling the same few sidewalks forever.
+  const fewestVisits = Math.min(...connected.map((edge) => visits.get(edge.id) ?? 0));
+  const pool = connected.filter((edge) => (visits.get(edge.id) ?? 0) === fewestVisits);
+  const lures = lureBuildingIds
+    .map(lurePoint)
+    .filter((point): point is GeoPoint => point !== null);
   if (lures.length > 0 && rng() < 0.4) {
     let best = pool[0]!;
     let bestMeters = Infinity;
     for (const edge of pool) {
       const mid = edge.points[Math.floor(edge.points.length / 2)] ?? edge.points[0]!;
       const meters = Math.min(
-        ...lures.map((lure) => haversineMeters(lure.latitude, lure.longitude, mid.latitude, mid.longitude)),
+        ...lures.map((lure) =>
+          haversineMeters(lure.latitude, lure.longitude, mid.latitude, mid.longitude),
+        ),
       );
       if (meters < bestMeters) {
         bestMeters = meters;
@@ -174,7 +189,17 @@ export function createWanderMachine(options?: {
   const speed = options?.speedMps ?? SCOTTY_WALK_MPS;
   const lures = options?.lureBuildingIds ?? (() => []);
   const edges = options?.edges ?? campusFootwayGraph();
+  // Build once, rather than scanning the campus graph at every junction.
+  const byNode = new Map<string, RoadEdge[]>();
+  for (const edge of edges) {
+    for (const key of new Set([edge.start, edge.end])) {
+      const touching = byNode.get(key) ?? [];
+      touching.push(edge);
+      byNode.set(key, touching);
+    }
+  }
   const start = startOnGraph(edges, CUC);
+  const visits = new Map<number, number>([[start.edgeId, 1]]);
   let edgeId = start.edgeId;
   let atKey = start.atKey;
   let path = start.path;
@@ -192,7 +217,7 @@ export function createWanderMachine(options?: {
     tick(now: number, dtMs: number): WanderSnapshot {
       if (!walking) {
         if (now < pauseUntil) return snapshot();
-        const next = pickNextEdge(edges, atKey, edgeId, rng, lures());
+        const next = pickNextEdge(byNode, visits, atKey, edgeId, rng, lures());
         if (!next) {
           pauseUntil = now + 800;
           return snapshot();
@@ -200,6 +225,7 @@ export function createWanderMachine(options?: {
         path = directedRoadPoints(next, atKey);
         atKey = roadEndKey(next, atKey);
         edgeId = next.id;
+        visits.set(edgeId, (visits.get(edgeId) ?? 0) + 1);
         meters = 0;
         walking = path.length > 1;
         if (!walking) {
@@ -208,7 +234,9 @@ export function createWanderMachine(options?: {
         }
       }
 
-      meters += speed * (Math.min(50, Math.max(0, dtMs)) / 1000);
+      // A resumed/backgrounded tab must not catch up by jumping down a path.
+      const elapsed = Number.isFinite(dtMs) ? Math.min(50, Math.max(0, dtMs)) : 0;
+      meters += speed * (elapsed / 1000);
       const along = positionAlongPath(path, meters);
       point = along.point;
       facing = along.facing;

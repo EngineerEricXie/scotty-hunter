@@ -18,7 +18,10 @@ export function ClusterSheet({
   onClose: () => void;
 }) {
   if (events.length < 2) return null;
-  const building = getBuilding(events[0]?.building_id);
+  const sameBuilding = events.every(
+    (event) => event.building_id === events[0]?.building_id,
+  );
+  const building = sameBuilding ? getBuilding(events[0]?.building_id) : null;
 
   return (
     <aside
@@ -31,7 +34,7 @@ export function ClusterSheet({
             <div>
               <p className="hud text-[8px] text-tartan">{events.length} DROPS HERE</p>
               <p className="mt-1 text-base font-bold">
-                {building?.name ?? "Nearby stops"}
+                {building?.name ?? "Nearby venues"}
               </p>
               <p className="text-sm text-muted">Choose one to open details.</p>
             </div>
@@ -66,7 +69,9 @@ export function ClusterSheet({
                         {hasHiddenMenu(event.id) ? " · hidden menu" : ""}
                       </span>
                     </span>
-                    <span className="hud shrink-0 text-[8px]">{planned ? "PLAN" : "OPEN"}</span>
+                    <span className="hud shrink-0 text-[8px]">
+                      {planned ? "PLAN" : "OPEN"}
+                    </span>
                   </button>
                 </li>
               );
