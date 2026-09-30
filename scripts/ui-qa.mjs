@@ -357,37 +357,6 @@ async function verifyIcs(page, button, name) {
 }
 
 async function routeRendering(page) {
-  const diagnostic = await page.evaluate(() => {
-    const el = document.querySelector('[data-map-ready="true"]');
-    let fiber = el?.[Object.keys(el).find((key) => key.startsWith("__reactFiber"))];
-    let map;
-    for (let n = 0; fiber && n < 15 && !map; n++, fiber = fiber.return) {
-      for (let hook = fiber.memoizedState, i = 0; hook && i < 20; i++, hook = hook.next) {
-        const value = hook.memoizedState?.current ?? hook.memoizedState;
-        if (
-          value &&
-          typeof value.getStyle === "function" &&
-          typeof value.queryRenderedFeatures === "function"
-        ) {
-          map = value;
-          break;
-        }
-      }
-    }
-    if (!map) return { mapFound: false };
-    const style = map.getStyle();
-    return {
-      mapFound: true,
-      styleLoaded: map.isStyleLoaded(),
-      sourceLoaded: map.getSource("cmu-meal-route")
-        ? map.isSourceLoaded("cmu-meal-route")
-        : false,
-      source: style.sources["cmu-meal-route"],
-      layers: style.layers.filter((layer) => layer.id.startsWith("cmu-meal-route")),
-      rendered: map.queryRenderedFeatures({ layers: ["cmu-meal-route-line"] }).length,
-    };
-  });
-  console.log("ROUTE RENDER DIAGNOSTIC", JSON.stringify(diagnostic));
   await page.waitForFunction(
     () => {
       const canvas = document.querySelector(".maplibregl-canvas");
@@ -977,7 +946,9 @@ try {
   if (results.some((result) => result.status === "failed")) process.exitCode = 1;
   else
     console.log(
-      "UI REGRESSION PASS: all deterministic viewport and fallback suites completed; see report.json for external provider status",
+      process.env.SCOTTY_QA_ONLY_ROUTE === "1"
+        ? "ROUTE PROBE PASS: real-provider route pixels and responsive map checks passed"
+        : "UI REGRESSION PASS: all viewport, interrupted-plan, fallback and real-provider suites passed",
     );
 } catch (error) {
   results.push({ name: "setup", status: "failed", error: String(error) });

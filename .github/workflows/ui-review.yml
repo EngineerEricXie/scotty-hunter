@@ -40,7 +40,6 @@ jobs:
           SCOTTY_QA_URL: ${{ inputs.qa_url }}
           SCOTTY_EXPECTED_SOURCE: ${{ inputs.expected_source }}
           SCOTTY_REQUIRE_LIVE_TILES: "1"
-          SCOTTY_QA_ONLY_ROUTE: "1"
       - uses: actions/upload-artifact@v4
         if: always()
         with:

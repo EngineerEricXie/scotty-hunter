@@ -1369,3 +1369,9 @@ button[aria-label^="Close"] {
     left: 8px;
   }
 }
+@media (min-width: 640px) and (max-width: 768px) and (max-height: 520px) {
+  .map-route-preview {
+    bottom: 12px;
+    left: 376px;
+  }
+}
