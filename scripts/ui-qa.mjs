@@ -183,6 +183,7 @@ const types = {
     await expect(
       livePage.locator(".route-start-marker, .map-route-button, .illustrated-map"),
     ).toHaveCount(0);
+    await livePage.waitForLoadState("networkidle");
     await livePage.screenshot({ path: root + "/qa/desktop-street-map.png" });
 
     await livePage.locator('.food-marker[data-buildings="tepper"]').click();
@@ -235,6 +236,14 @@ const types = {
     const mobilePins = mobileMap.getByRole("switch", { name: "Event pins", exact: true });
     await expect(mobilePins).toBeVisible();
     await expect(mobilePins).toBeChecked();
+    await mobileMap.waitForLoadState("networkidle");
+    for (const marker of await mobileMap.locator(".food-marker").all()) {
+      const box = await marker.boundingBox();
+      expect(box).not.toBeNull();
+      expect(box.x).toBeGreaterThanOrEqual(0);
+      expect(box.x + box.width).toBeLessThanOrEqual(390);
+      expect(box.y).toBeGreaterThanOrEqual(212);
+    }
     await mobileMap.screenshot({ path: root + "/qa/mobile-street-map.png" });
     await mobilePins.click();
     await expect(mobileMap.locator(".food-marker")).toHaveCount(0);

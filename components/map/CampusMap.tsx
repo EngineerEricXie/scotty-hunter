@@ -89,7 +89,7 @@ export function CampusMap({
         map.fitBounds(campusLngLatBounds(), {
           padding:
             window.innerWidth <= 768
-              ? { top: 240, bottom: 225, left: 32, right: 32 }
+              ? { top: 260, bottom: 225, left: 58, right: 58 }
               : { top: 136, bottom: 148, left: 48, right: 72 },
           pitch: 0,
           bearing: 0,
