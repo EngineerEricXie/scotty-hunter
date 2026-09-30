@@ -188,6 +188,7 @@ const types = {
     await livePage.locator('.food-marker[data-buildings="tepper"]').click();
     await livePage.getByLabel("Overlapping food drops", { exact: true }).waitFor();
     await livePage
+      .getByLabel("Overlapping food drops", { exact: true })
       .getByRole("button", { name: /AI Seminar: Grounded Campus Agents/ })
       .click();
     await livePage.getByLabel("Event details", { exact: true }).waitFor();
@@ -208,7 +209,8 @@ const types = {
     const initialPosition = await mascot.evaluate((el) => el.style.transform);
     await livePage.waitForFunction(
       (position) =>
-        document.querySelector(".scotty-wanderer")?.style.transform !== position,
+        Boolean(document.querySelector(".scotty-wanderer")) &&
+        document.querySelector(".scotty-wanderer").style.transform !== position,
       initialPosition,
       { timeout: 8000 },
     );
@@ -220,7 +222,8 @@ const types = {
     await livePage.emulateMedia({ reducedMotion: "no-preference" });
     await livePage.waitForFunction(
       (position) =>
-        document.querySelector(".scotty-wanderer")?.style.transform !== position,
+        Boolean(document.querySelector(".scotty-wanderer")) &&
+        document.querySelector(".scotty-wanderer").style.transform !== position,
       pausedPosition,
       { timeout: 8000 },
     );
