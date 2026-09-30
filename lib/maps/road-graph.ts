@@ -59,7 +59,8 @@ export function linesFromFootwayCollection(
     );
     let current: GeoPoint[] = [];
     const flush = () => {
-      if (current.length >= 2 && lineLength(current) >= 6) lines.push(current);
+      // Even a sub-meter source way can be the only explicit link at a junction.
+      if (current.length >= 2 && lineLength(current) > 0) lines.push(current);
       current = [];
     };
     for (const point of raw) {

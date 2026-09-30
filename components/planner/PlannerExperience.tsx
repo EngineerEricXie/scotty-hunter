@@ -1,9 +1,9 @@
 "use client";
 
 import { itineraryToIcs } from "@/lib/calendar/calendar-service";
-import { IS_STATIC_DEMO } from "@/lib/runtime";
+import { IS_STATIC_DEMO, assetPath } from "@/lib/runtime";
 import { appFetch, downloadBlob } from "@/lib/api-client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import type { Event, Itinerary, UserPreference, WeekPlan } from "@/lib/types";
 import { demoToday, enableDemoClock } from "@/lib/demo-clock";
@@ -31,10 +31,12 @@ import { formatLongDate } from "@/lib/timezone";
 export function PlannerExperience({
   variant = "page",
   onClose,
+  onViewRoute,
   dateOverride,
 }: {
   variant?: "page" | "overlay";
   onClose?: () => void;
+  onViewRoute?: (date: string) => void;
   dateOverride?: string | null;
 }) {
   const params = useSearchParams();
@@ -48,6 +50,24 @@ export function PlannerExperience({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [events, setEvents] = useState<Record<string, Event>>({});
+  const requestGeneration = useRef(0);
+  useEffect(
+    () => () => {
+      requestGeneration.current += 1;
+    },
+    [],
+  );
+
+  function viewRoute(routeDate: string) {
+    if (onViewRoute) onViewRoute(routeDate);
+    else
+      window.location.assign(assetPath(`/?routeDate=${encodeURIComponent(routeDate)}`));
+  }
+
+  function backToDiscovery() {
+    if (onClose) onClose();
+    else window.location.assign(assetPath("/"));
+  }
 
   function persist(next: UserPreference, rerun = false) {
     setPrefs(next);
@@ -82,6 +102,7 @@ export function PlannerExperience({
     mode?: "day" | "week";
     date?: string;
   }) {
+    const generation = ++requestGeneration.current;
     const nextPrefs = override?.prefs ?? prefs;
     const nextMode = override?.mode ?? mode;
     const nextDate = override?.date ?? date;
@@ -100,6 +121,9 @@ export function PlannerExperience({
         week?: WeekPlan;
         error?: string;
       };
+      // Closing/resetting or starting a newer plan invalidates this response.
+      // An obsolete request must never restore a cleared saved route.
+      if (generation !== requestGeneration.current) return;
       if (!res.ok) throw new Error(json.error ?? "Planner failed");
       if (nextMode === "week" && json.week) {
         setWeek(json.week);
@@ -124,9 +148,11 @@ export function PlannerExperience({
         throw new Error("Planner failed");
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Planner failed");
+      if (generation === requestGeneration.current) {
+        setError(err instanceof Error ? err.message : "Planner failed");
+      }
     } finally {
-      setBusy(false);
+      if (generation === requestGeneration.current) setBusy(false);
     }
   }
 
@@ -157,6 +183,8 @@ export function PlannerExperience({
   }
 
   function resetToDefault() {
+    requestGeneration.current += 1;
+    setBusy(false);
     resetLocalAppData();
     resetScottyToDefault();
     setPrefs({ ...DEFAULT_PREFERENCES });
@@ -197,7 +225,8 @@ export function PlannerExperience({
           </div>
           <p className="mt-2 text-sm font-bold leading-6 text-muted">
             Set your tastes and walking limit. Turn sample campus events into a day that
-            fits. Building pins are approximate; walking times are demo estimates, not navigation directions.
+            fits. Building pins are approximate; walking times are demo estimates, not
+            navigation directions.
           </p>
           <div className="mt-3 flex gap-2">
             <button
@@ -255,9 +284,18 @@ export function PlannerExperience({
             <RouteSummary plan={plan} />
             <RequiredActionsList actions={plan.required_actions} onAddTodo={addTodo} />
             <MealItinerary plan={plan} onAddTodo={addTodo} />
+            {plan.events.length > 0 && (
+              <button
+                type="button"
+                onClick={() => viewRoute(plan.date)}
+                className="pixel-btn min-h-11 w-full bg-gold text-sm"
+              >
+                SHOW ROUTE ON MAP
+              </button>
+            )}
             <button
               type="button"
-              onClick={() => onClose?.()}
+              onClick={backToDiscovery}
               className="pixel-btn min-h-11 w-full bg-ink text-sm text-gold"
             >
               BACK TO DISCOVERY
@@ -293,11 +331,21 @@ export function PlannerExperience({
                 </h2>
                 <RouteSummary plan={day.itinerary} />
                 <MealItinerary plan={day.itinerary} onAddTodo={addTodo} />
+                {day.itinerary.events.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => viewRoute(day.date)}
+                    className="pixel-btn min-h-11 w-full bg-gold text-sm"
+                    aria-label={`Show route for ${day.date}`}
+                  >
+                    SHOW ROUTE ON MAP
+                  </button>
+                )}
               </section>
             ))}
             <button
               type="button"
-              onClick={() => onClose?.()}
+              onClick={backToDiscovery}
               className="pixel-btn min-h-11 w-full bg-ink text-sm text-gold"
             >
               BACK TO DISCOVERY

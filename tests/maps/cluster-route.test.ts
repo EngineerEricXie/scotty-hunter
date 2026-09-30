@@ -5,10 +5,16 @@ import {
   clusterHourLabel,
   pickClusterRepresentative,
 } from "@/lib/maps/cluster-events";
-import { buildMealRoute, mealRouteDrawCoordinates, mealRouteLine } from "@/lib/maps/meal-route";
+import {
+  buildMealRoute,
+  mealRouteDrawCoordinates,
+  mealRouteLine,
+} from "@/lib/maps/meal-route";
 import type { Event } from "@/lib/types";
 
-function event(partial: Partial<Event> & Pick<Event, "id" | "title" | "start_time">): Event {
+function event(
+  partial: Partial<Event> & Pick<Event, "id" | "title" | "start_time">,
+): Event {
   return withEventDefaults({
     organizer: "HackCMU",
     venue_raw: "CUC",
@@ -37,7 +43,10 @@ describe("cluster overlapping map markers", () => {
     });
     const clusters = clusterEvents([lunch, dinner]);
     expect(clusters).toHaveLength(1);
-    expect(clusters[0]?.events.map((item) => item.id)).toEqual(["sat-lunch", "sat-dinner"]);
+    expect(clusters[0]?.events.map((item) => item.id)).toEqual([
+      "sat-lunch",
+      "sat-dinner",
+    ]);
     expect(clusterHourLabel(clusters[0]!)).toBe("CUC");
   });
 
@@ -114,13 +123,11 @@ describe("today's meal path", () => {
       date: "2026-09-12",
       startBuildingId: "ghc",
     });
-    expect(stops.filter((stop) => stop.kind !== "path").map((stop) => `${stop.kind}:${stop.buildingId}`)).toEqual([
-      "start:ghc",
-      "meal:nsh",
-      "via:wean",
-      "via:doherty",
-      "meal:cuc",
-    ]);
+    expect(
+      stops
+        .filter((stop) => stop.kind !== "path")
+        .map((stop) => `${stop.kind}:${stop.buildingId}`),
+    ).toEqual(["start:ghc", "meal:nsh", "meal:cuc"]);
     expect(mealRouteDrawCoordinates(stops).length).toBeGreaterThan(8);
     expect(mealRouteLine(stops)?.geometry.coordinates.length).toBeGreaterThan(8);
   });
@@ -145,12 +152,10 @@ describe("today's meal path", () => {
       startBuildingId: "ghc",
     });
     expect(stops[0]?.kind).toBe("meal");
-    expect(stops.filter((stop) => stop.kind !== "path").map((stop) => `${stop.kind}:${stop.buildingId}`)).toEqual([
-      "meal:ghc",
-      "via:nsh",
-      "via:wean",
-      "via:doherty",
-      "meal:cuc",
-    ]);
+    expect(
+      stops
+        .filter((stop) => stop.kind !== "path")
+        .map((stop) => `${stop.kind}:${stop.buildingId}`),
+    ).toEqual(["meal:ghc", "meal:cuc"]);
   });
 });
