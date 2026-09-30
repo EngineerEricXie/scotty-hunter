@@ -41,7 +41,9 @@ const types = {
     res.end(fs.readFileSync(file));
   });
   await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
-  const url = `http://127.0.0.1:${server.address().port}/scotty-hunter/`;
+  const url = "https://engineerericxie.github.io/scotty-hunter/";
+  const deployment = await (await fetch(`${url}deployment.json`)).json();
+  if (deployment.source_commit !== "3d5349a621e035b35c6bbbdcfa7c92085cd7ce1d") throw new Error("Unexpected deployed source revision");
   const browser = await chromium.launch({
     headless: true,
     ...(process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH
@@ -53,7 +55,7 @@ const types = {
     deviceScaleFactor: 1,
   });
   await page.route("**/*", (route) =>
-    route.request().url().startsWith("http://127.0.0.1:")
+    new URL(route.request().url()).origin === new URL(url).origin
       ? route.continue()
       : route.abort(),
   );
