@@ -41,7 +41,15 @@ const types = {
     res.end(fs.readFileSync(file));
   });
   await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
-  const url = `http://127.0.0.1:${server.address().port}/scotty-hunter/`;
+  const url = "https://engineerericxie.github.io/scotty-hunter/";
+  // Publication may still be propagating; the existing workflow timeout bounds this read-only wait.
+  while (true) {
+    try {
+      const deployment = await (await fetch(`${url}deployment.json`)).json();
+      if (deployment.source_commit === "98002a546c96786d8fd3a246f86e7089bd65c0a4") break;
+    } catch { /* Try again when the deployment is available. */ }
+    await new Promise((resolve) => setTimeout(resolve, 5000));
+  }
   const browser = await chromium.launch({
     headless: true,
     ...(process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH
@@ -53,7 +61,7 @@ const types = {
     deviceScaleFactor: 1,
   });
   await page.route("**/*", (route) =>
-    route.request().url().startsWith("http://127.0.0.1:")
+    new URL(route.request().url()).origin === new URL(url).origin
       ? route.continue()
       : route.abort(),
   );
