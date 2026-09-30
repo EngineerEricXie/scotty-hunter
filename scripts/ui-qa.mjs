@@ -77,6 +77,17 @@ const types = {
   await page
     .getByText("Locations are unverified · Demo events", { exact: true })
     .waitFor();
+  await page
+    .getByText(
+      "Street map unavailable. You can still browse the event list and use the planner.",
+      { exact: true },
+    )
+    .waitFor();
+  if (await page.locator(".food-marker, .route-start-marker").count()) {
+    throw new Error(
+      "Unavailable tiles must not leave a schematic-looking map of floating markers",
+    );
+  }
   await page.screenshot({ path: root + "/qa/desktop-explore.png" });
   console.log("Desktop rendered, event cards:", await page.locator(".food-card").count());
   await page.getByRole("textbox", { name: "Search food or events" }).fill("zzzz-no-food");
@@ -120,6 +131,52 @@ const types = {
   console.log(
     "UI PASS: street-map default, no schematic map or toggle, unverified-location notice, desktop/mobile, search empty/reset, details, demo itinerary, ICS export, overlay dismissal, base path, no runtime errors",
   );
+  const noWebglPage = await browser.newPage({ viewport: { width: 390, height: 844 } });
+  noWebglPage.on("pageerror", (error) => errors.push(error.message));
+  await noWebglPage.addInitScript(() => {
+    const getContext = HTMLCanvasElement.prototype.getContext;
+    HTMLCanvasElement.prototype.getContext = function (type, ...args) {
+      if (type === "webgl" || type === "webgl2" || type === "experimental-webgl")
+        return null;
+      return getContext.call(this, type, ...args);
+    };
+  });
+  await noWebglPage.goto(url);
+  await noWebglPage
+    .getByText(
+      "Street map unavailable. You can still browse the event list and use the planner.",
+      { exact: true },
+    )
+    .waitFor();
+  await noWebglPage.getByRole("button", { name: "List view", exact: true }).click();
+  await noWebglPage.locator(".food-card").first().waitFor();
+  if (errors.length) throw new Error(errors.join("\n"));
+  console.log("WEBGL FALLBACK PASS: list remains usable, no runtime errors");
+
+  // A separate live smoke check reports provider availability without making
+  // deterministic interaction tests depend on third-party tile service uptime.
+  const livePage = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+  livePage.on("pageerror", (error) => errors.push(error.message));
+  await livePage.goto(url);
+  const liveTiles = await livePage
+    .locator(".food-marker")
+    .first()
+    .waitFor({ timeout: 30000 })
+    .then(
+      () => true,
+      () => false,
+    );
+  if (liveTiles) {
+    await livePage.screenshot({ path: root + "/qa/desktop-street-map.png" });
+    await livePage.setViewportSize({ width: 390, height: 844 });
+    await livePage.screenshot({ path: root + "/qa/mobile-street-map.png" });
+    console.log("LIVE MAP PASS: external street tiles loaded before event markers");
+  } else {
+    console.log(
+      "LIVE MAP NOT VERIFIED: external tiles unavailable; offline fallback and local interactions passed",
+    );
+  }
+  if (errors.length) throw new Error(errors.join("\n"));
   await browser.close();
   server.close();
 })().catch((e) => {
