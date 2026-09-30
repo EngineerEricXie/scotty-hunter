@@ -7,6 +7,11 @@ import { foodStatusLabel } from "@/lib/extraction/classify-food";
 import { formatTimeRange } from "@/lib/timezone";
 import { BottomNav } from "@/components/ui/BottomNav";
 
+export async function generateStaticParams() {
+  const events = await getEventRepository().listEvents({ include_none: true });
+  return events.map((event) => ({ id: event.id }));
+}
+
 export default async function EventPage({
   params,
 }: {

@@ -1,5 +1,6 @@
 "use client";
 
+import { assetPath } from "@/lib/runtime";
 import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
@@ -12,9 +13,19 @@ import { EventBottomSheet } from "@/components/map/EventBottomSheet";
 import { ClusterSheet } from "@/components/map/ClusterSheet";
 import { BottomNav } from "@/components/ui/BottomNav";
 import { MapPanelOverlay } from "@/components/ui/MapPanelOverlay";
-import { EmptyState, ErrorState, LoadingState } from "@/components/ui/States";
-import { PressStartGate, StatusBar } from "@/components/ui/PressStart";
-import { NowGoingTicker } from "@/components/live/NowGoingTicker";
+import { ErrorState, LoadingState } from "@/components/ui/States";
+import {
+  Search,
+  SlidersHorizontal,
+  ArrowRight,
+  MapPin,
+  List,
+  Map as MapIcon,
+  Route,
+  X,
+} from "lucide-react";
+import { EventCard } from "@/components/events/EventCard";
+import { ScottySprite } from "@/components/pet/ScottySprite";
 import {
   APP_RESET_EVENT,
   loadLastPlanEventIds,
@@ -30,15 +41,13 @@ import { liveNowGoing, loadScotty, onScottyChange } from "@/lib/scotty/state";
 import { VIEWPORT_SYNC_EVENT, syncAppViewportVars } from "@/lib/ui/viewport-sync";
 
 const CampusMap = dynamic(
-  () => import("@/components/map/CampusMap").then((mod) => mod.CampusMap),
+  () => import("@/components/map/DiscoveryMap").then((mod) => mod.DiscoveryMap),
   { ssr: false, loading: () => <div className="absolute inset-0 bg-canvas" /> },
 );
 
 const PlannerExperience = dynamic(
   () =>
-    import("@/components/planner/PlannerExperience").then(
-      (mod) => mod.PlannerExperience,
-    ),
+    import("@/components/planner/PlannerExperience").then((mod) => mod.PlannerExperience),
   {
     ssr: false,
     loading: () => (
@@ -52,8 +61,7 @@ const PlannerExperience = dynamic(
 );
 
 const ScottyExperience = dynamic(
-  () =>
-    import("@/components/pet/ScottyExperience").then((mod) => mod.ScottyExperience),
+  () => import("@/components/pet/ScottyExperience").then((mod) => mod.ScottyExperience),
   {
     ssr: false,
     loading: () => (
@@ -67,8 +75,7 @@ const ScottyExperience = dynamic(
 );
 
 const TodosExperience = dynamic(
-  () =>
-    import("@/components/todos/TodosExperience").then((mod) => mod.TodosExperience),
+  () => import("@/components/todos/TodosExperience").then((mod) => mod.TodosExperience),
   {
     ssr: false,
     loading: () => (
@@ -97,7 +104,11 @@ export function MapExperience() {
   const [error, setError] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [pings, setPings] = useState<{ eventId: string; title: string; buildingId: string | null; at: string }[]>([]);
+  const [listOpen, setListOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const [pings, setPings] = useState<
+    { eventId: string; title: string; buildingId: string | null; at: string }[]
+  >([]);
   const [plannedIds, setPlannedIds] = useState<string[]>(() =>
     typeof window === "undefined" ? [] : loadLastPlanEventIds(),
   );
@@ -123,7 +134,7 @@ export function MapExperience() {
       query.delete("date");
     }
     const qs = query.toString();
-    window.history.replaceState({ panel: next }, "", qs ? `/?${qs}` : "/");
+    window.history.replaceState({ panel: next }, "", assetPath(qs ? `/?${qs}` : "/"));
   }
 
   function closePanel() {
@@ -144,6 +155,7 @@ export function MapExperience() {
     setPanel(next);
     setPlanDate(next === "plan" ? (extra?.date ?? null) : null);
     setSelectedId(null);
+    setClusterEvents(null);
     syncPanelUrl(next, extra);
   }
 
@@ -188,18 +200,6 @@ export function MapExperience() {
   }, []);
 
   useEffect(() => {
-    if (panel !== "plan") {
-      const ids = loadLastPlanEventIds();
-      setPlannedIds(ids);
-      setShowRoute(ids.length >= 2);
-    }
-    if (panel) {
-      setSelectedId(null);
-      setClusterEvents(null);
-    }
-  }, [panel]);
-
-  useEffect(() => {
     const onReset = () => {
       setPlannedIds([]);
       setShowRoute(false);
@@ -227,7 +227,13 @@ export function MapExperience() {
       const next = parsePanel(query.get("panel"));
       setPanel(next);
       setPlanDate(query.get("date"));
-      if (next) setSelectedId(null);
+      setSelectedId(null);
+      setClusterEvents(null);
+      if (!next) {
+        const ids = loadLastPlanEventIds();
+        setPlannedIds(ids);
+        setShowRoute(ids.length >= 2);
+      }
     };
     window.addEventListener("popstate", onPopState);
     return () => window.removeEventListener("popstate", onPopState);
@@ -276,15 +282,24 @@ export function MapExperience() {
 
   const visible = useMemo(() => {
     const filtered = events.filter((event) => {
-      if (plannedIds.includes(event.id)) return true;
+      if (
+        search &&
+        !`${event.title} ${event.venue_raw} ${event.food_items.join(" ")} ${event.food_types.join(" ")}`
+          .toLowerCase()
+          .includes(search.toLowerCase())
+      )
+        return false;
       const date = calendarDateInZone(new Date(event.start_time));
       if (date !== filters.date) return false;
       return eventVisible(event, filters);
     });
     return applyCorpusBoost(filtered, pings);
-  }, [events, filters, pings, plannedIds]);
+  }, [events, filters, pings, search]);
 
-  const selected = visible.find((event) => event.id === selectedId) ?? events.find((event) => event.id === selectedId) ?? null;
+  const selected =
+    visible.find((event) => event.id === selectedId) ??
+    events.find((event) => event.id === selectedId) ??
+    null;
   const todayCount = visible.filter(
     (event) => calendarDateInZone(new Date(event.start_time)) === filters.date,
   ).length;
@@ -313,92 +328,213 @@ export function MapExperience() {
 
   return (
     <div
-      className="fixed inset-x-0 w-full overflow-hidden bg-canvas"
+      className="app-shell fixed inset-x-0 w-full overflow-hidden bg-canvas"
       style={{ top: "var(--app-offset-top, 0px)", height: "var(--app-height, 100dvh)" }}
     >
-      <PressStartGate />
-      <div className={`absolute inset-0 ${panel ? "pointer-events-none" : ""}`}>
-        <CampusMap
-          events={visible}
-          selectedId={selectedId}
-          plannedIds={plannedIds}
-          showRoute={showRoute && canShowRoute}
-          routeStops={routeStops}
-          goingEventIds={goingEventIds}
-          onOpen={openEvents}
-          onScottyClick={() => openPanel("scotty")}
-        />
-
-        <div className="pointer-events-none absolute inset-x-0 top-0 z-20 px-3 pt-[max(10px,env(safe-area-inset-top))]">
-          <div className="pointer-events-auto mx-auto max-w-lg pixel-panel bg-card/95 p-2">
-            <StatusBar right={APP_CONFIG.demoMode ? "DEMO" : "LIVE"} />
-            <div className="mt-1 flex items-center justify-between gap-2">
-              <div>
-                <h1 className="hud text-[13px] leading-6">SCOTTYBITES</h1>
-                <p className="text-xs font-bold text-muted">Personalized free-meal planner</p>
-              </div>
-              <div className="flex shrink-0 gap-1">
-                <button
-                  type="button"
-                  className="pixel-chip px-2 py-1 text-[11px]"
-                  data-on={showRoute && canShowRoute ? "true" : "false"}
-                  disabled={!canShowRoute}
-                  onClick={() => setShowRoute((open) => !open)}
-                  aria-pressed={showRoute && canShowRoute}
-                  title={
-                    canShowRoute
-                      ? "Show today's meal path"
-                      : "Plan at least two stops to show a path"
-                  }
-                >
-                  ROUTE
-                </button>
-                <button
-                  type="button"
-                  className="pixel-chip px-2 py-1 text-[11px]"
-                  data-on={filtersOpen ? "true" : "false"}
-                  onClick={() => setFiltersOpen((open) => !open)}
-                >
-                  FILTER
-                </button>
-              </div>
-            </div>
-            {pings.length > 0 && (
-              <div className="mt-2 border-4 border-ink bg-[#fffaf0] px-2 py-1">
-                <NowGoingTicker />
-              </div>
-            )}
-            {filtersOpen && (
-              <div className="mt-2">
-                <FilterBar filters={filters} onChange={setFilters} />
-              </div>
-            )}
-          </div>
+      <div
+        className={`absolute inset-0 ${panel ? "pointer-events-none" : ""}`}
+        inert={!!panel}
+      >
+        <div className="campus-map-frame">
+          <CampusMap
+            events={visible}
+            selectedId={selectedId}
+            plannedIds={plannedIds}
+            showRoute={showRoute && canShowRoute}
+            routeStops={routeStops}
+            goingEventIds={goingEventIds}
+            onOpen={openEvents}
+            onScottyClick={() => openPanel("scotty")}
+          />
         </div>
 
-        {!selected && !clusterEvents && (
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 px-3 pb-[108px]">
-            <div className="pointer-events-auto mx-auto max-w-lg space-y-2">
-              {status === "loading" && (
-                <div className="pixel-panel px-4 py-2">
-                  <LoadingState label="Loading campus food…" />
-                </div>
-              )}
-              {status === "error" && <ErrorState message={error} />}
-              {status === "ready" && visible.length === 0 && (
-                <EmptyState
-                  title="No free food matches"
-                  body="Try another day, include likely events, or clear a meal filter."
-                />
-              )}
-              {status === "ready" && visible.length > 0 && (
-                <p className="pixel-panel px-3 py-2 text-sm font-bold">
-                  {todayCount} FOOD DROP{todayCount === 1 ? "" : "S"} TODAY
-                  {plannedCount > 0 ? ` · ${plannedCount} ON YOUR PLAN` : ""}
-                  {showRoute && canShowRoute ? " · PATH ON" : ""}
-                </p>
-              )}
+        <aside
+          className={`discovery-panel ${listOpen ? "is-list-open" : ""}`}
+          aria-label="Find campus food"
+        >
+          <div className="discovery-heading">
+            <div className="brand-row">
+              <button
+                className="brand"
+                onClick={() => {
+                  setSearch("");
+                  setListOpen(false);
+                }}
+                aria-label="ScottyBites home"
+              >
+                <span className="brand-mascot">
+                  <ScottySprite mood="happy" action="idle" />
+                </span>
+                <span>
+                  scotty<span className="brand-accent">bites</span>
+                  <small>YOUR CAMPUS. YOUR NEXT BITE.</small>
+                </span>
+              </button>
+              <span className="demo-pill">{APP_CONFIG.demoMode ? "DEMO" : "CMU"}</span>
             </div>
+            <div className="discovery-intro">
+              <p className="eyebrow">A LITTLE EXPLORING. A LOT TO EAT.</p>
+              <h1>
+                Good food.
+                <br />
+                <span>Great company.</span>
+              </h1>
+              <p>
+                Find free food around Carnegie Mellon.
+                <br />
+                Leave the planning to Scotty.
+              </p>
+            </div>
+            <label className="food-search">
+              <Search size={18} aria-hidden="true" />
+              <span className="sr-only">Search food or events</span>
+              <input
+                value={search}
+                onChange={(event) => {
+                  setSearch(event.target.value);
+                  setListOpen(true);
+                }}
+                placeholder="Pizza, lunch, a little coffee…"
+              />
+              {search && (
+                <button
+                  type="button"
+                  onClick={() => setSearch("")}
+                  aria-label="Clear search"
+                >
+                  <X size={16} />
+                </button>
+              )}
+            </label>
+            <div className="discovery-actions">
+              <button
+                className="filter-toggle"
+                aria-expanded={filtersOpen}
+                aria-controls="food-filters"
+                onClick={() => setFiltersOpen(!filtersOpen)}
+              >
+                <SlidersHorizontal size={16} /> Filters {filtersOpen ? "−" : "+"}
+              </button>
+              <button
+                className="mobile-view-toggle"
+                onClick={() => setListOpen(!listOpen)}
+                aria-pressed={listOpen}
+              >
+                {listOpen ? <MapIcon size={16} /> : <List size={16} />}
+                {listOpen ? "Map view" : "List view"}
+              </button>
+              <span className="results-count" aria-live="polite">
+                {status === "ready" ? `${todayCount} bites to explore` : "Finding bites…"}
+              </span>
+            </div>
+            <div
+              id="food-filters"
+              className={filtersOpen ? "filters-expanded" : "filters-compact"}
+            >
+              <FilterBar filters={filters} onChange={setFilters} compact={!filtersOpen} />
+            </div>
+          </div>
+          <div className="discovery-results">
+            <div className="results-heading">
+              <h2>On the menu</h2>
+              <span>
+                {new Date(`${filters.date}T12:00:00`).toLocaleDateString("en-US", {
+                  month: "short",
+                  day: "numeric",
+                })}
+              </span>
+            </div>
+            {status === "loading" && <LoadingState label="Finding your next bite…" />}
+            {status === "error" && (
+              <>
+                <ErrorState message={error} />
+                <button className="retry-button" onClick={() => window.location.reload()}>
+                  Try again
+                </button>
+              </>
+            )}
+            {status === "ready" && visible.length === 0 && (
+              <div className="empty-results">
+                <span aria-hidden="true">🍽️</span>
+                <h3>No bites just yet</h3>
+                <p>
+                  Try another date or a different search. Our sample week starts September
+                  12.
+                </p>
+                <button
+                  onClick={() => {
+                    setSearch("");
+                    setFilters({
+                      date: demoToday(),
+                      meals: ["breakfast", "lunch", "dinner", "snacks"],
+                      explicitOnly: false,
+                      includeLikely: true,
+                    });
+                  }}
+                >
+                  Reset filters
+                </button>
+              </div>
+            )}
+            <div className="event-list">
+              {[...visible]
+                .sort((a, b) => a.start_time.localeCompare(b.start_time))
+                .map((event) => (
+                  <EventCard
+                    key={event.id}
+                    event={event}
+                    selected={event.id === selectedId}
+                    onSelect={(event) => {
+                      setSelectedId(event.id);
+                      setClusterEvents(null);
+                      setListOpen(false);
+                    }}
+                  />
+                ))}
+            </div>
+            {APP_CONFIG.demoMode && (
+              <p className="demo-disclaimer">
+                Interactive demo · Sample events from Sep 12–18, 2026. These are not live
+                food listings. Your plans stay in this browser.
+              </p>
+            )}
+          </div>
+          <div className="discovery-footer">
+            <button className="plan-cta" onClick={() => openPlan()}>
+              <span>
+                <strong>A whole day, sorted.</strong>
+                <small>Build your free-food itinerary</small>
+              </span>
+              <ArrowRight size={21} />
+            </button>
+          </div>
+        </aside>
+        <div className="map-location-label">
+          <span className="location-icon">
+            <MapPin size={18} />
+          </span>
+          <span>
+            <strong>Carnegie Mellon</strong>
+            <small>Pittsburgh, Pennsylvania</small>
+          </span>
+        </div>
+        <button
+          className="map-route-button"
+          disabled={!canShowRoute}
+          aria-pressed={showRoute && canShowRoute}
+          onClick={() => setShowRoute(!showRoute)}
+          title={
+            canShowRoute ? "Toggle your meal route" : "Build a plan to see your route"
+          }
+        >
+          <Route size={18} />
+          {showRoute && canShowRoute ? "Hide route" : "Meal route"}
+        </button>
+        {!selected && !clusterEvents && (
+          <div className="map-hint">
+            <span className="map-hint-dot" />
+            Pick a bite on the map
+            {plannedCount > 0 ? ` · ${plannedCount} planned` : " · Adventures start here"}
           </div>
         )}
 
@@ -439,13 +575,29 @@ export function MapExperience() {
         />
       </div>
 
-      <MapPanelOverlay open={panel === "plan"} closeLabel="Close planner" onClose={closePanel}>
-        <PlannerExperience variant="overlay" onClose={closePanel} dateOverride={planDate} />
+      <MapPanelOverlay
+        open={panel === "plan"}
+        closeLabel="Close planner"
+        onClose={closePanel}
+      >
+        <PlannerExperience
+          variant="overlay"
+          onClose={closePanel}
+          dateOverride={planDate}
+        />
       </MapPanelOverlay>
-      <MapPanelOverlay open={panel === "scotty"} closeLabel="Close Scotty" onClose={closePanel}>
+      <MapPanelOverlay
+        open={panel === "scotty"}
+        closeLabel="Close Scotty"
+        onClose={closePanel}
+      >
         <ScottyExperience variant="overlay" onClose={closePanel} />
       </MapPanelOverlay>
-      <MapPanelOverlay open={panel === "quest"} closeLabel="Close quests" onClose={closePanel}>
+      <MapPanelOverlay
+        open={panel === "quest"}
+        closeLabel="Close quests"
+        onClose={closePanel}
+      >
         <TodosExperience variant="overlay" onClose={closePanel} />
       </MapPanelOverlay>
 

@@ -1,12 +1,13 @@
 "use client";
 
+import { Map, CalendarDays, Dog, ListChecks } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 const ITEMS = [
-  { id: "map", href: "/", label: "MAP", icon: "/icons/nav-map.png" },
-  { id: "plan", href: "/?panel=plan", label: "PLAN", icon: "/icons/nav-plan.png" },
-  { id: "scotty", href: "/?panel=scotty", label: "SCOTTY", icon: "/icons/nav-scotty.png" },
-  { id: "quest", href: "/?panel=quest", label: "QUEST", icon: "/icons/nav-quest.png" },
+  { id: "map", href: "/", label: "Explore", icon: Map },
+  { id: "plan", href: "/?panel=plan", label: "My plan", icon: CalendarDays },
+  { id: "scotty", href: "/?panel=scotty", label: "Scotty", icon: Dog },
+  { id: "quest", href: "/?panel=quest", label: "To-dos", icon: ListChecks },
 ] as const;
 
 export function BottomNav({
@@ -29,11 +30,9 @@ export function BottomNav({
   return (
     <nav
       aria-label="Primary"
-      className={`pointer-events-auto inset-x-0 bottom-0 z-40 mx-auto max-w-lg px-3 pb-[max(10px,env(safe-area-inset-bottom))] ${
-        contained ? "absolute" : "fixed"
-      }`}
+      className={`app-navigation ${contained ? "is-contained" : "is-fixed"}`}
     >
-      <div className="pixel-panel flex items-stretch justify-around bg-card px-1 py-1">
+      <div className="navigation-inner">
         {ITEMS.map((item) => {
           const active =
             item.id === "plan"
@@ -41,10 +40,10 @@ export function BottomNav({
               : item.id === "quest"
                 ? current === "/todos" || current === "/?panel=quest"
                 : current === item.href ||
-                  (item.id === "scotty" && (current === "/scotty" || current === "/profile"));
-          const className = `flex min-h-12 min-w-16 flex-col items-center justify-center gap-0.5 px-1.5 text-[11px] font-bold ${
-            active ? "bg-ink text-gold" : "text-ink"
-          }`;
+                  (item.id === "scotty" &&
+                    (current === "/scotty" || current === "/profile"));
+          const className = `navigation-item ${active ? "is-active" : ""}`;
+          const Icon = item.icon;
 
           return (
             <button
@@ -72,13 +71,8 @@ export function BottomNav({
                 else router.push("/?panel=quest");
               }}
             >
-              <img
-                src={item.icon}
-                alt=""
-                aria-hidden
-                className={`pixel-sprite h-7 w-7 ${active ? "brightness-110 contrast-125" : ""}`}
-              />
-              <span className="hud text-[8px]">{item.label}</span>
+              <Icon size={21} strokeWidth={active ? 2.3 : 1.7} aria-hidden="true" />
+              <span>{item.label}</span>
             </button>
           );
         })}

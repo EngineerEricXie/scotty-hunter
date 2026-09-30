@@ -1,5 +1,7 @@
 "use client";
 
+import { IS_STATIC_DEMO } from "@/lib/runtime";
+import { downloadEventCalendar } from "@/lib/api-client";
 import { useEffect, useState } from "react";
 import type { Event } from "@/lib/types";
 import { foodEmoji } from "@/lib/food-ui";
@@ -30,10 +32,18 @@ export function EventBottomSheet({
   onAddTodo: (event: Event) => void;
 }) {
   const [, setScottyTick] = useState(0);
+  const [calendarError, setCalendarError] = useState("");
 
   useEffect(() => {
     return onScottyChange(() => setScottyTick((tick) => tick + 1));
   }, []);
+
+  useEffect(() => {
+    if (!event) return;
+    const handleKey = (key: KeyboardEvent) => { if (key.key === "Escape") onClose(); };
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, [event, onClose]);
 
   if (!event) return null;
   const building = getBuilding(event.building_id);
@@ -53,7 +63,7 @@ export function EventBottomSheet({
 
   return (
     <aside
-      className="pointer-events-auto absolute inset-x-0 bottom-0 z-30 mx-auto w-full max-w-lg px-3 pb-[108px] md:inset-x-auto md:right-4 md:top-24 md:bottom-auto md:w-[380px] md:px-0 md:pb-0"
+      className="event-details pointer-events-auto absolute inset-x-0 bottom-0 z-30 mx-auto w-full max-w-lg px-3 pb-[108px] md:inset-x-auto md:right-4 md:top-24 md:bottom-auto md:w-[380px] md:px-0 md:pb-0"
       aria-label="Event details"
     >
       <div className="pixel-panel overflow-hidden bg-card">
@@ -142,8 +152,7 @@ export function EventBottomSheet({
           )}
           {hidden && !menuUnlocked && (
             <p className="mt-2 text-sm font-bold text-tartan">
-              Hidden menu locked — upload a table photo to reveal {hidden.dishes.length} dishes
-              the listing omitted.
+              {IS_STATIC_DEMO ? `Try the photo demo to reveal ${hidden.dishes.length} sample dishes.` : `Hidden menu locked — upload a table photo to reveal ${hidden.dishes.length} dishes the listing omitted.`}
             </p>
           )}
           {dietNote && (
@@ -169,7 +178,7 @@ export function EventBottomSheet({
                   : ""}
               </p>
               <p className="mt-1 text-white/90">
-                ScottyBites never submits external forms for you.
+                {IS_STATIC_DEMO ? "Example RSVP requirement for this demo event. No registration is submitted." : "ScottyBites never submits external forms for you."}
               </p>
             </div>
           )}
@@ -194,9 +203,9 @@ export function EventBottomSheet({
               onClick={() => onAddToPlan(event)}
               className="pixel-btn min-h-11 bg-ink text-sm text-gold"
             >
-              ADD TO PLAN
+              PLAN THIS DAY
             </button>
-            {event.registration_url ? (
+            {event.registration_url && !IS_STATIC_DEMO ? (
               <a
                 href={event.registration_url}
                 target="_blank"
@@ -206,14 +215,19 @@ export function EventBottomSheet({
                 REGISTER
               </a>
             ) : (
-              <a
-                href={`/api/calendar?eventId=${event.id}`}
+              <button
+                type="button"
+                onClick={() => {
+                  setCalendarError("");
+                  void downloadEventCalendar(event.id).catch(() => setCalendarError("Could not download the calendar file. Please try again."));
+                }}
                 className="pixel-btn grid min-h-11 place-items-center bg-white text-sm"
               >
                 .ICS
-              </a>
+              </button>
             )}
           </div>
+          {calendarError && <p className="mt-2 text-sm text-tartan">{calendarError}</p>}
           {event.registration_required && (
             <button
               type="button"

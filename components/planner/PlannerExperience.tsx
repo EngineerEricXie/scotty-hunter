@@ -1,6 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { itineraryToIcs } from "@/lib/calendar/calendar-service";
+import { IS_STATIC_DEMO } from "@/lib/runtime";
+import { appFetch, downloadBlob } from "@/lib/api-client";
+import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import type { Event, Itinerary, UserPreference, WeekPlan } from "@/lib/types";
 import { demoToday, enableDemoClock } from "@/lib/demo-clock";
@@ -44,10 +47,6 @@ export function PlannerExperience({
   const [error, setError] = useState("");
   const [events, setEvents] = useState<Record<string, Event>>({});
 
-  const requestBody = useMemo(
-    () => plannerRequestFromPrefs(prefs, date, mode),
-    [prefs, date, mode],
-  );
 
   function persist(next: UserPreference, rerun = false) {
     setPrefs(next);
@@ -81,7 +80,7 @@ export function PlannerExperience({
     setError("");
     savePreferences(nextPrefs);
     try {
-      const res = await fetch("/api/plan", {
+      const res = await appFetch("/api/plan", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
@@ -119,19 +118,15 @@ export function PlannerExperience({
     }
   }
 
-  async function downloadIcs() {
-    const res = await fetch("/api/calendar", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...requestBody, mode: "day" }),
-    });
-    const blob = await res.blob();
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `scottybites-${date}.ics`;
-    a.click();
-    URL.revokeObjectURL(url);
+  function downloadIcs() {
+    setError("");
+    if (!plan) return;
+    try {
+      const calendar = new Blob([itineraryToIcs(plan)], { type: "text/calendar;charset=utf-8" });
+      downloadBlob(calendar, `scottybites-${plan.date}.ics`);
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "Calendar export failed.");
+    }
   }
 
   function runDemoPlan() {
@@ -252,7 +247,7 @@ export function PlannerExperience({
             </button>
             <UnavailableIntegration
               name="Google Calendar"
-              detail="OAuth is scaffolded. Without client credentials, export an ICS file instead."
+              detail={IS_STATIC_DEMO ? "Download the sample itinerary as an ICS file and import it into your calendar." : "OAuth is scaffolded. Without client credentials, export an ICS file instead."}
             />
           </div>
         )}

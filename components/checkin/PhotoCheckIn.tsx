@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { IS_STATIC_DEMO } from "@/lib/runtime";
+import { appFetch } from "@/lib/api-client";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { APP_CONFIG } from "@/lib/config";
 import {
   confirmPhoto,
@@ -28,7 +30,7 @@ export function PhotoCheckIn({
   const [, setScottyTick] = useState(0);
   const unlocked = isMenuUnlocked(eventId, loadScotty());
   const [note, setNote] = useState(() =>
-    menu
+    IS_STATIC_DEMO ? "Try a demo photo check-in. Sample dishes are prewritten; your photo stays in this browser." : menu
       ? isMenuUnlocked(eventId)
         ? "Table photo matched a hidden menu the public listing omitted."
         : "Official copy is incomplete. Snap the table to unlock the real dishes."
@@ -42,13 +44,7 @@ export function PhotoCheckIn({
   const [justUnlocked, setJustUnlocked] = useState(false);
   const previewRef = useRef<string | null>(null);
 
-  function lockedNote() {
-    return menu
-      ? "Official copy is incomplete. Snap the table to unlock the real dishes."
-      : "Camera → Grok labels → Food Dex.";
-  }
-
-  function clearPhotoUi() {
+  const clearPhotoUi = useCallback(() => {
     if (previewRef.current) URL.revokeObjectURL(previewRef.current);
     previewRef.current = null;
     setPreview(null);
@@ -56,8 +52,10 @@ export function PhotoCheckIn({
     setAtlasIds([]);
     setResult(null);
     setJustUnlocked(false);
-    setNote(lockedNote());
-  }
+    setNote(IS_STATIC_DEMO
+      ? "Demo photo check-in: sample dishes, no image recognition or upload."
+      : menu ? "Official copy is incomplete. Snap the table to unlock the real dishes." : "Camera → Grok labels → Food Dex.");
+  }, [menu]);
 
   useEffect(() => {
     return onScottyChange(() => setScottyTick((tick) => tick + 1));
@@ -67,7 +65,7 @@ export function PhotoCheckIn({
     const onReset = () => clearPhotoUi();
     window.addEventListener(APP_RESET_EVENT, onReset);
     return () => window.removeEventListener(APP_RESET_EVENT, onReset);
-  }, [menu]);
+  }, [clearPhotoUi]);
 
   useEffect(() => {
     return () => {
@@ -94,7 +92,7 @@ export function PhotoCheckIn({
     setPreview(url);
     setBusy(true);
     try {
-      const res = await fetch("/api/vision", {
+      const res = await appFetch("/api/vision", {
         method: "POST",
         body: (() => {
           const form = new FormData();
@@ -142,6 +140,8 @@ export function PhotoCheckIn({
         );
         onDone?.();
       }
+    } catch (error) {
+      setNote(error instanceof Error ? error.message : "Could not scan that photo. Please try again.");
     } finally {
       setBusy(false);
       scheduleViewportSync();
@@ -165,7 +165,7 @@ export function PhotoCheckIn({
         <DishGrid dishes={menu.dishes} unlocked={unlocked} reveal={justUnlocked} />
 
         {unlocked && (
-          <p className="mt-2 text-xs font-bold leading-5 text-sage">{menu.scoutBlurb}</p>
+          <p className="mt-2 text-xs font-bold leading-5 text-sage">{IS_STATIC_DEMO ? "Sample menu for this demo event. Dietary options are illustrative and are not verified." : menu.scoutBlurb}</p>
         )}
 
         {preview && (
@@ -209,7 +209,7 @@ export function PhotoCheckIn({
       </label>
       {labels.length > 0 && (
         <div className="mt-3">
-          <p className="text-sm font-bold">AI spotted:</p>
+          <p className="text-sm font-bold">{IS_STATIC_DEMO ? "Sample dishes:" : "AI spotted:"}</p>
           <ul className="mt-1 text-sm">
             {labels.map((label) => (
               <li key={label}>• {label}</li>

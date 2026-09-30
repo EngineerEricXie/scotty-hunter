@@ -1,9 +1,10 @@
 "use client";
 
+import { assetPath } from "@/lib/runtime";
 const SRC = {
-  idle: "/sprites/scotty-idle.png",
-  eat: "/sprites/scotty-eat.png",
-  hungry: "/sprites/scotty-hungry.png",
+  idle: assetPath("/sprites/scotty-idle.png"),
+  eat: assetPath("/sprites/scotty-eat.png"),
+  hungry: assetPath("/sprites/scotty-hungry.png"),
 } as const;
 
 export function ScottySprite({

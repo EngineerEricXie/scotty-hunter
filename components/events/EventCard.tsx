@@ -2,9 +2,7 @@ import type { Event } from "@/lib/types";
 import { foodEmoji } from "@/lib/food-ui";
 import { formatTimeRange } from "@/lib/timezone";
 import { getBuilding } from "@/lib/maps/buildings";
-import { FoodConfidenceBadge } from "@/components/events/FoodConfidenceBadge";
-import { RegistrationBadge } from "@/components/events/RegistrationBadge";
-import { NowGoingBadge } from "@/components/live/NowGoingTicker";
+import { ArrowUpRight, Clock3, MapPin, Check } from "lucide-react";
 
 export function EventCard({
   event,
@@ -20,39 +18,36 @@ export function EventCard({
     <button
       type="button"
       onClick={() => onSelect?.(event)}
-      className={`pixel-panel w-full px-3 py-3 text-left ${selected ? "bg-gold" : "bg-card"}`}
+      className={`food-card ${selected ? "is-selected" : ""}`}
+      aria-pressed={selected}
     >
-      <div className="flex items-start gap-3">
-        <span
-          className="grid h-11 w-11 shrink-0 place-items-center border-4 border-ink bg-white text-lg"
-          aria-hidden
-        >
+      <div className="food-card-top">
+        <span className="food-card-emoji" aria-hidden="true">
           {foodEmoji(event)}
         </span>
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <p className="truncate text-[15px] font-bold">{event.title}</p>
-            <NowGoingBadge eventId={event.id} />
-          </div>
-          <p className="mt-0.5 text-sm text-muted">
-            {formatTimeRange(event.start_time, event.end_time)}
-            {" · "}
-            {building?.short_name ?? "Unresolved location"}
-            {event.room ? ` ${event.room}` : ""}
-          </p>
-          <div className="mt-2 flex flex-wrap gap-2">
-            <FoodConfidenceBadge
-              status={event.food_status}
-              confidence={event.food_confidence}
-              boosted={Boolean(event.boost_reasons?.length)}
-            />
-            <RegistrationBadge
-              required={event.registration_required}
-              deadline={event.registration_deadline}
-            />
-          </div>
-        </div>
+        <span
+          className={`food-card-status ${event.food_status === "EXPLICIT" ? "is-confirmed" : ""}`}
+        >
+          {event.food_status === "EXPLICIT" && <Check size={12} />}
+          {event.food_status === "EXPLICIT" ? "Food confirmed" : "Food likely"}
+        </span>
+        <ArrowUpRight size={17} className="food-card-arrow" />
       </div>
+      <h3>{event.title}</h3>
+      <div className="food-card-meta">
+        <span>
+          <Clock3 size={13} />
+          {formatTimeRange(event.start_time, event.end_time)}
+        </span>
+        <span>
+          <MapPin size={13} />
+          {building?.short_name ?? "Location unconfirmed"}
+          {event.room ? ` · ${event.room}` : ""}
+        </span>
+      </div>
+      {event.registration_required && (
+        <span className="food-card-rsvp">RSVP needed · Save a reminder</span>
+      )}
     </button>
   );
 }

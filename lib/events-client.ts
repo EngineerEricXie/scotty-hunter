@@ -1,10 +1,11 @@
+import { appFetch } from "@/lib/api-client";
 import type { Event } from "@/lib/types";
 
 let inflight: Promise<Event[]> | null = null;
 
 export function prefetchCampusEvents(): Promise<Event[]> {
   if (!inflight) {
-    inflight = fetch("/api/events")
+    inflight = appFetch("/api/events")
       .then(async (res) => {
         const json = (await res.json()) as { events?: Event[]; error?: string };
         if (!res.ok) throw new Error(json.error ?? "Failed to load events");

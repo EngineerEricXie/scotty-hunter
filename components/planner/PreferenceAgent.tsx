@@ -1,5 +1,7 @@
 "use client";
 
+import { IS_STATIC_DEMO } from "@/lib/runtime";
+import { appFetch } from "@/lib/api-client";
 import { useEffect, useState } from "react";
 import type { UserPreference } from "@/lib/types";
 import { describePreferences, englishPreferenceSummary } from "@/lib/personalization/apply-patch";
@@ -27,7 +29,7 @@ export function PreferenceAgent({
   const [agentLabel, setAgentLabel] = useState("Checking agent…");
 
   useEffect(() => {
-    fetch("/api/preferences/parse")
+    appFetch("/api/preferences/parse")
       .then((res) => res.json())
       .then((json: { agent_ready?: boolean; provider?: string; model?: string | null }) => {
         setAgentReady(Boolean(json.agent_ready));
@@ -38,26 +40,28 @@ export function PreferenceAgent({
         } else if (json.agent_ready) {
           setAgentLabel("Using your configured LLM API.");
         } else {
-          setAgentLabel("GROK_API not detected — local parser only.");
+          setAgentLabel(IS_STATIC_DEMO ? "Local preference parser · no account or API key needed." : "GROK_API not detected — local parser only.");
         }
       })
       .catch(() => {
         setAgentReady(false);
-        setAgentLabel("GROK_API not detected — local parser only.");
+        setAgentLabel(IS_STATIC_DEMO ? "Local preference parser · no account or API key needed." : "GROK_API not detected — local parser only.");
       });
   }, []);
 
-  useEffect(() => {
+  // A parent reset or loaded persona replaces the editing draft immediately.
+  // Guarded render-time synchronization avoids a stale frame and an effect loop.
+  const [syncedUtterance, setSyncedUtterance] = useState(value.last_preference_utterance);
+  if (syncedUtterance !== value.last_preference_utterance) {
     const utterance = value.last_preference_utterance;
-    if (!utterance || /[\u4e00-\u9fff]/.test(utterance)) {
-      setDraft("");
+    setSyncedUtterance(utterance);
+    setDraft(/[\u4e00-\u9fff]/.test(utterance) ? "" : utterance);
+    if (!utterance) {
       setError("");
       setWarning("");
       setSource("");
-      return;
     }
-    setDraft(utterance);
-  }, [value.last_preference_utterance]);
+  }
 
   function loadDemoPersona() {
     const next = applyDemoPersona(value);
@@ -78,7 +82,7 @@ export function PreferenceAgent({
     setError("");
     setWarning("");
     try {
-      const res = await fetch("/api/preferences/parse", {
+      const res = await appFetch("/api/preferences/parse", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ utterance, current: value }),

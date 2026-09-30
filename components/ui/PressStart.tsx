@@ -33,8 +33,8 @@ export function PressStartGate() {
         <p className="hud text-[9px] text-tartan">HACKCMU 2026</p>
         <h1 className="hud mt-3 text-[16px] leading-7">SCOTTYBITES</h1>
         <p className="mt-3 text-sm font-bold leading-6">
-          A personalized free-meal plan for Carnegie Mellon. Tell the agent who you are — ranking
-          stays deterministic, not an LLM.
+          A personalized free-meal plan for Carnegie Mellon. Tell the agent who you are —
+          ranking stays deterministic, not an LLM.
         </p>
         <div className="mx-auto mt-4 w-24">
           <ScottySprite mood="happy" action="idle" />
@@ -75,7 +75,7 @@ export function StatusBar({ right = "HACKCMU" }: { right?: string }) {
   }, []);
 
   return (
-    <div className="hud flex items-center justify-between text-[8px] text-gold">
+    <div className="status-bar hud flex items-center justify-between text-[10px] text-sage">
       <span>SCOTTYBITES</span>
       <span>{clock}</span>
       <span className="text-tartan">{right}</span>

@@ -1,3 +1,4 @@
+import { assetPath } from "@/lib/runtime";
 import {
   campusFootwayGraph,
   directedRoadPoints,
@@ -14,10 +15,10 @@ export type ScottyFacing = "south" | "north" | "east" | "west";
 export type { GeoPoint };
 
 export const SCOTTY_MAP_SPRITES: Record<ScottyFacing, string> = {
-  south: "/sprites/scotty-map-south.png",
-  north: "/sprites/scotty-map-north.png",
-  east: "/sprites/scotty-map-east.png",
-  west: "/sprites/scotty-map-west.png",
+  south: assetPath("/sprites/scotty-map-south.png"),
+  north: assetPath("/sprites/scotty-map-north.png"),
+  east: assetPath("/sprites/scotty-map-east.png"),
+  west: assetPath("/sprites/scotty-map-west.png"),
 };
 
 export const SCOTTY_WALK_MPS = 12;

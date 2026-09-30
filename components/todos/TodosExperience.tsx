@@ -1,5 +1,7 @@
 "use client";
 
+import { IS_STATIC_DEMO } from "@/lib/runtime";
+import { appFetch } from "@/lib/api-client";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import type { Event, Todo } from "@/lib/types";
@@ -27,7 +29,7 @@ export function TodosExperience({
   }, []);
 
   useEffect(() => {
-    fetch("/api/events?include_none=true")
+    appFetch("/api/events?include_none=true")
       .then((res) => res.json())
       .then((json: { events?: Event[] }) => {
         const map: Record<string, Event> = {};
@@ -75,7 +77,7 @@ export function TodosExperience({
             )}
           </div>
           <p className="mt-2 text-sm font-bold text-muted">
-            Registration stays on the source site. ScottyBites only reminds you.
+            {IS_STATIC_DEMO ? "Sample RSVP tasks for the demo. No live registration forms or submissions." : "Registration stays on the source site. ScottyBites only reminds you."}
           </p>
         </div>
 
@@ -105,7 +107,7 @@ export function TodosExperience({
                 <h2 className="mt-1 text-base font-bold">{todo.title}</h2>
                 {event && <p className="text-sm text-muted">{event.title}</p>}
                 <div className="mt-3 flex flex-wrap gap-2">
-                  {todo.registration_url && (
+                  {todo.registration_url && !IS_STATIC_DEMO && (
                     <a
                       href={todo.registration_url}
                       target="_blank"

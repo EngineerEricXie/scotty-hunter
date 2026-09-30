@@ -2,23 +2,15 @@ export const APP_TIMEZONE = "America/New_York" as const;
 
 export const DEMO_DATE_DEFAULT = "2026-09-12";
 
-function readPublic(name: string, fallback: string): string {
-  const value = process.env[name];
-  return value && value.length > 0 ? value : fallback;
-}
-
 /**
  * Demo mode is ON by default so the HackCMU judging flow never depends on
  * live credentials or campus websites. Set NEXT_PUBLIC_DEMO_MODE=false to
  * prefer live adapters when they are configured.
  */
 export const APP_CONFIG = {
-  demoMode: readPublic("NEXT_PUBLIC_DEMO_MODE", "true") !== "false",
-  demoDate: readPublic("NEXT_PUBLIC_DEMO_DATE", DEMO_DATE_DEFAULT),
-  mapStyleUrl: readPublic(
-    "NEXT_PUBLIC_MAP_STYLE_URL",
-    "https://tiles.openfreemap.org/styles/liberty",
-  ),
+  demoMode: process.env.NEXT_PUBLIC_DEMO_MODE !== "false",
+  demoDate: process.env.NEXT_PUBLIC_DEMO_DATE || DEMO_DATE_DEFAULT,
+  mapStyleUrl: process.env.NEXT_PUBLIC_MAP_STYLE_URL || "https://tiles.openfreemap.org/styles/liberty",
   appName: "ScottyBites",
   timezone: APP_TIMEZONE,
   walkingMetersPerMinute: 80,

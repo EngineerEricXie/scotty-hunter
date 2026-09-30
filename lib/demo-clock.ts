@@ -1,3 +1,4 @@
+import { IS_STATIC_DEMO } from "@/lib/runtime";
 import { APP_CONFIG, APP_TIMEZONE } from "@/lib/config";
 import { addDaysIso, calendarDateInZone, parseIsoDate, zonedWallTimeToDate } from "@/lib/timezone";
 
@@ -9,6 +10,7 @@ const CLOCK_KEY = "scottybites:demo-clock";
 export const DEMO_CLOCK_EVENT = "scottybites:demo-clock";
 
 export function isDemoClockActive(): boolean {
+  if (IS_STATIC_DEMO) return true;
   if (typeof window === "undefined") return false;
   return window.localStorage.getItem(CLOCK_KEY) === "1";
 }

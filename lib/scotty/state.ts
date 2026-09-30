@@ -1,9 +1,10 @@
+import { assetPath } from "@/lib/runtime";
 import { ATLAS_SPECIES, matchAtlasIds } from "@/lib/scotty/atlas";
 import { getHiddenMenu, type HiddenMenu } from "@/lib/vision/hidden-menu";
 import { loadPoints } from "@/lib/storage/local-state";
 import { APP_CONFIG } from "@/lib/config";
 import { demoNowMs } from "@/lib/demo-clock";
-import { DEMO_SEEDED_EVENTS } from "@/data/fixtures/demo-events";
+import { DEMO_SEEDS } from "@/data/fixtures/demo-seeds";
 import { zonedWallTimeToIso } from "@/lib/timezone";
 
 const KEY = "scottybites:scotty";
@@ -81,10 +82,10 @@ export const QUESTS = [
 ] as const;
 
 export const HUNTER_SPRITES: Record<HunterAnimal, string> = {
-  squirrel: "/sprites/hunter-squirrel.png",
-  raccoon: "/sprites/hunter-raccoon.png",
-  cardinal: "/sprites/hunter-cardinal.png",
-  terrier: "/sprites/scotty-idle.png",
+  squirrel: assetPath("/sprites/hunter-squirrel.png"),
+  raccoon: assetPath("/sprites/hunter-raccoon.png"),
+  cardinal: assetPath("/sprites/hunter-cardinal.png"),
+  terrier: assetPath("/sprites/scotty-idle.png"),
 };
 
 export const DEFAULT_HUNTERS: TartanHunter[] = [
@@ -146,9 +147,14 @@ function write(state: ScottyState) {
 }
 
 function demoEventWindow(eventId: string): { startTime: string; endTime: string } | null {
-  const seeded = DEMO_SEEDED_EVENTS.find((event) => event.id === eventId);
-  if (seeded?.start_time) {
-    return { startTime: seeded.start_time, endTime: seeded.end_time ?? seeded.start_time };
+  const seeded = DEMO_SEEDS.find((event) => event.id === eventId);
+  if (seeded) {
+    const [year, month, day] = seeded.date.split("-").map(Number);
+    const end = seeded.end ?? seeded.start;
+    return {
+      startTime: zonedWallTimeToIso(year, month, day, ...seeded.start),
+      endTime: zonedWallTimeToIso(year, month, day, ...end),
+    };
   }
   if (eventId === "hackcmu-2026-saturday-lunch") {
     return {

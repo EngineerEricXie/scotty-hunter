@@ -115,3 +115,26 @@ These are intentionally unfinished because they need a human:
 - Google Calendar is ICS-only until OAuth exists.
 - Photo labels are mocked.
 - Building footprints are schematic rectangles for extrusion, not official GIS.
+
+## GitHub Pages demo
+
+`npm run build:pages` creates a standalone site in `out/`, designed for
+`https://<owner>.github.io/scotty-hunter/`. Set `NEXT_PUBLIC_BASE_PATH` to a different
+subdirectory (or an empty string for a root-domain deployment) before building.
+The included GitHub Actions workflow tests, builds, and publishes `main`; choose
+**GitHub Actions** as the source under the repository's **Settings → Pages**.
+
+This public build is an explicitly labeled, no-key demo:
+
+- Sample September 2026 events and a frozen September 12 demo clock
+- Client-side event filters, deterministic day/week planning, local preference parsing,
+  sample photo check-ins, quests, and downloadable ICS calendars
+- Browser-local preferences, points, and progress; no account or database
+- Photo results are prewritten samples. Photos stay in the browser and are not uploaded
+  or analyzed. Event listings, availability, and dietary details are not live or verified
+- The optional interactive map uses public OpenFreeMap tiles
+
+The build uses an isolated temporary copy that omits server API routes and does not
+copy `.env` files. It leaves the original source untouched. `npm run dev` and
+`npm run build && npm start` still run the full Next.js app with its optional server
+integrations. Never add private keys to `NEXT_PUBLIC_*` variables or to this static site.

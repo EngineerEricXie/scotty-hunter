@@ -1,3 +1,4 @@
+import { IS_STATIC_DEMO } from "@/lib/runtime";
 import { APP_TIMEZONE } from "@/lib/config";
 import { sha256, shortId } from "@/lib/hash";
 import { classifyFood, extractFoodMetadata } from "@/lib/extraction/classify-food";
@@ -22,7 +23,7 @@ import {
 export const EXTRACTION_VERSION = "heuristic-v1";
 
 export function getEventExtractor(): EventExtractor {
-  if (canUseLlmExtractor()) return new LLMEventExtractor();
+  if (!IS_STATIC_DEMO && canUseLlmExtractor()) return new LLMEventExtractor();
   return getLocalExtractor();
 }
 

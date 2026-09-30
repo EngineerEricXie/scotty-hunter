@@ -1,5 +1,6 @@
-import { redirect } from "next/navigation";
+import { Suspense } from "react";
+import { MapExperience } from "@/components/map/MapExperience";
 
 export default function MapPage() {
-  redirect("/");
+  return <Suspense fallback={<div className="h-dvh bg-canvas" />}><MapExperience /></Suspense>;
 }

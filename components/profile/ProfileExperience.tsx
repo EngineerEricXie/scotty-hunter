@@ -1,5 +1,7 @@
 "use client";
 
+import { IS_STATIC_DEMO } from "@/lib/runtime";
+import { appFetch } from "@/lib/api-client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { BottomNav } from "@/components/ui/BottomNav";
@@ -40,7 +42,7 @@ export function ProfileExperience() {
     const refreshPoints = () => setPoints(loadScotty().points);
     const boot = window.setTimeout(refreshPoints, 0);
     const unsub = onScottyChange(refreshPoints);
-    fetch("/api/sources")
+    appFetch("/api/sources")
       .then((res) => res.json())
       .then((json: { sources?: SourceRow[]; extraction?: ExtractionInfo; grok?: GrokInfo }) => {
         setSources(json.sources ?? []);
@@ -85,12 +87,12 @@ export function ProfileExperience() {
           ) : (
             <UnavailableIntegration
               name="Grok"
-              detail="Add GROK_API to .env.local to parse preferences and label food photos with xAI Grok."
+              detail={IS_STATIC_DEMO ? "This public demo uses a local preference parser and sample photo results. Photos are not uploaded or analyzed." : "Add GROK_API to .env.local to parse preferences and label food photos with xAI Grok."}
             />
           )}
           <UnavailableIntegration
             name="Supabase"
-            detail="Repository mode is local-fixture until a Supabase URL and key are provided."
+            detail={IS_STATIC_DEMO ? "Events come from a bundled September 2026 demo snapshot. This is not a live campus food feed." : "Repository mode is local-fixture until a Supabase URL and key are provided."}
           />
           {extraction.active ? (
             <div className="border-4 border-ink bg-white/80 px-4 py-3 text-sm">
@@ -102,7 +104,7 @@ export function ProfileExperience() {
           ) : (
             <UnavailableIntegration
               name="LLM extraction"
-              detail="Heuristic extractor is the default. Set EXTRACTION_PROVIDER=llm plus OPENAI_API_KEY, OPENAI_BASE_URL, and OPENAI_MODEL."
+              detail={IS_STATIC_DEMO ? "Planning and preference matching run locally. The full server app supports optional live adapters." : "Heuristic extractor is the default. Set EXTRACTION_PROVIDER=llm plus OPENAI_API_KEY, OPENAI_BASE_URL, and OPENAI_MODEL."}
             />
           )}
         </section>

@@ -29,8 +29,10 @@ export function ScottyWanderer({
 }) {
   const luresRef = useRef(lureBuildingIds);
   const onClickRef = useRef(onClick);
-  luresRef.current = lureBuildingIds;
-  onClickRef.current = onClick;
+  useEffect(() => {
+    luresRef.current = lureBuildingIds;
+    onClickRef.current = onClick;
+  }, [lureBuildingIds, onClick]);
 
   useEffect(() => {
     const name = loadScotty().name || "Scotty";
@@ -48,7 +50,11 @@ export function ScottyWanderer({
       lureBuildingIds: () => luresRef.current,
     });
     const first = machine.tick(performance.now(), 0);
-    const marker = new Marker({ element: el, anchor: "bottom", pitchAlignment: "viewport" })
+    const marker = new Marker({
+      element: el,
+      anchor: "bottom",
+      pitchAlignment: "viewport",
+    })
       .setLngLat([first.point.longitude, first.point.latitude])
       .addTo(map);
     marker.setOffset([0, 2]);

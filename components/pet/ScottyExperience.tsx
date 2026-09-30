@@ -35,7 +35,6 @@ function NameField({
   className?: string;
 }) {
   const [draft, setDraft] = useState(value);
-  useEffect(() => setDraft(value), [value]);
   return (
     <input
       aria-label={ariaLabel}
@@ -82,7 +81,12 @@ export function ScottyExperience({
   const board = useMemo(() => {
     return [
       ...state.hunters,
-      { id: "you", name: state.hunterName, animal: "terrier" as const, points: state.points },
+      {
+        id: "you",
+        name: state.hunterName,
+        animal: "terrier" as const,
+        points: state.points,
+      },
     ].sort((a, b) => b.points - a.points);
   }, [state.hunterName, state.hunters, state.points]);
 
@@ -123,6 +127,7 @@ export function ScottyExperience({
             </div>
             <div>
               <NameField
+                key={state.name}
                 value={state.name}
                 ariaLabel="Pet name"
                 onCommit={(next) => renamePet(next)}
@@ -138,14 +143,20 @@ export function ScottyExperience({
               <p className="mt-2 text-xs font-bold uppercase text-muted">{mood}</p>
             </div>
           </div>
-          <button type="button" onClick={treat} className="pixel-btn mt-3 min-h-11 w-full bg-gold text-sm">
+          <button
+            type="button"
+            onClick={treat}
+            className="pixel-btn mt-3 min-h-11 w-full bg-gold text-sm"
+          >
             TREAT (−12 PTS)
           </button>
           {treatNote && <p className="mt-2 text-sm font-bold">{treatNote}</p>}
         </div>
 
         <section className="pixel-panel mt-4 bg-card/95 p-3">
-          <p className="hud text-[9px] text-tartan">FOOD DEX {progress.caught}/{progress.total}</p>
+          <p className="hud text-[9px] text-tartan">
+            FOOD DEX {progress.caught}/{progress.total}
+          </p>
           <div className="mt-3 grid grid-cols-2 gap-2">
             {ATLAS_SPECIES.map((species) => {
               const caught = state.atlas[species.id];
@@ -169,8 +180,8 @@ export function ScottyExperience({
 
         <PhotoCheckIn />
         <p className="mt-2 px-1 text-xs font-bold text-muted">
-          To unlock a hidden menu, open Saturday Lunch (or RI pizza) on the map and upload a table
-          photo.
+          To unlock a hidden menu, open Saturday Lunch (or RI pizza) on the map and upload
+          a table photo.
         </p>
 
         {listUnlockedMenus(state).length > 0 && (
@@ -179,7 +190,9 @@ export function ScottyExperience({
             <ul className="mt-2 space-y-2">
               {listUnlockedMenus(state).map((menu) => (
                 <li key={menu.eventId} className="border-4 border-ink bg-[#fffaf0] p-2">
-                  <p className="text-sm font-bold">{menu.dishes.map((dish) => dish.emoji).join(" ")}</p>
+                  <p className="text-sm font-bold">
+                    {menu.dishes.map((dish) => dish.emoji).join(" ")}
+                  </p>
                   <p className="mt-1 text-xs font-bold leading-5">{menu.scoutBlurb}</p>
                 </li>
               ))}
@@ -191,12 +204,17 @@ export function ScottyExperience({
           <p className="hud text-[9px]">QUESTS</p>
           <ul className="mt-2 space-y-2">
             {QUESTS.map((quest) => (
-              <li key={quest.id} className="flex items-start justify-between gap-2 border-4 border-ink bg-[#fffaf0] p-2">
+              <li
+                key={quest.id}
+                className="flex items-start justify-between gap-2 border-4 border-ink bg-[#fffaf0] p-2"
+              >
                 <div>
                   <p className="text-sm font-bold">{quest.title}</p>
                   <p className="text-xs text-muted">{quest.detail}</p>
                 </div>
-                <span className="hud text-[8px]">{state.quests[quest.id] ? "DONE" : `${quest.xp}XP`}</span>
+                <span className="hud text-[8px]">
+                  {state.quests[quest.id] ? "DONE" : `${quest.xp}XP`}
+                </span>
               </li>
             ))}
           </ul>
@@ -204,7 +222,9 @@ export function ScottyExperience({
 
         <section className="pixel-panel mt-4 bg-ink p-3 text-gold">
           <p className="hud text-[9px]">TARTAN HUNTERS</p>
-          <p className="mt-1 text-xs font-bold text-[#f4d03f]/80">Campus animals — rename anyone.</p>
+          <p className="mt-1 text-xs font-bold text-[#f4d03f]/80">
+            Campus animals — rename anyone.
+          </p>
           <ol className="mt-2 space-y-2 text-sm">
             {board.map((row, index) => (
               <li key={row.id} className="flex items-center gap-2">
@@ -215,6 +235,7 @@ export function ScottyExperience({
                 />
                 <span className="hud w-4 text-[8px]">{index + 1}</span>
                 <NameField
+                  key={state.hunterName}
                   value={row.name}
                   ariaLabel={`${row.animal} hunter name`}
                   onCommit={(next) => renameHunter(row.id, next)}
