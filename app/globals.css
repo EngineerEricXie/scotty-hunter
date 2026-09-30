@@ -49,7 +49,7 @@ body {
   font-size: 18px;
 }
 
-.maplibregl-map,
+.app-shell .maplibregl-map,
 .maplibregl-canvas,
 .maplibregl-canvas-container {
   image-rendering: auto;
@@ -173,16 +173,16 @@ body {
   }
 }
 
-.maplibregl-ctrl-attrib {
+.app-shell .maplibregl-ctrl-attrib {
   font-size: 9px;
 }
 
-.maplibregl-ctrl-bottom-right {
+.app-shell .maplibregl-ctrl-bottom-right {
   bottom: 118px;
   right: 12px;
 }
 
-.maplibregl-ctrl-group {
+.app-shell .maplibregl-ctrl-group {
   border: 3px solid #1b1224 !important;
   border-radius: 0 !important;
   box-shadow: 3px 3px 0 #1b1224 !important;
@@ -839,17 +839,17 @@ select {
   background: var(--ink);
   border-radius: 4px;
 }
-.maplibregl-ctrl-group {
+.app-shell .maplibregl-ctrl-group {
   border: 1px solid #d6ded3 !important;
   border-radius: 10px !important;
   box-shadow: 0 3px 14px #203d3310 !important;
   overflow: hidden;
 }
-.maplibregl-ctrl-bottom-right {
+.app-shell .maplibregl-ctrl-bottom-right {
   bottom: 30px;
   right: 24px;
 }
-.maplibregl-ctrl-attrib {
+.app-shell .maplibregl-ctrl-attrib {
   font-size: 8px;
 }
 .empty-results {
@@ -1038,7 +1038,7 @@ select {
   .navigation-inner {
     border-radius: 18px;
   }
-  .maplibregl-ctrl-bottom-right {
+  .app-shell .maplibregl-ctrl-bottom-right {
     bottom: 220px;
     right: 16px;
   }
@@ -1049,7 +1049,7 @@ select {
   .food-card {
     padding: 15px;
   }
-  .maplibregl-ctrl-attrib {
+  .app-shell .maplibregl-ctrl-attrib {
     max-width: 150px;
   }
 }
@@ -1206,7 +1206,7 @@ button[aria-label^="Close"] {
 button[aria-label^="Close"] {
   min-width: 44px;
 }
-.maplibregl-ctrl-group button {
+.app-shell .maplibregl-ctrl-group button {
   width: 44px;
   height: 44px;
 }
@@ -1313,7 +1313,7 @@ button[aria-label^="Close"] {
     min-height: 44px;
     padding: 8px 10px;
   }
-  .maplibregl-ctrl-bottom-right {
+  .app-shell .maplibregl-ctrl-bottom-right {
     right: 8px;
     bottom: 76px;
   }
