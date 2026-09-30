@@ -173,14 +173,6 @@ body {
   }
 }
 
-.campus-world {
-  background-color: #4fa64a;
-  background-image:
-    linear-gradient(90deg, #3d8a3a 50%, transparent 50%),
-    linear-gradient(#3d8a3a 50%, transparent 50%);
-  background-size: 24px 24px;
-}
-
 .maplibregl-ctrl-attrib {
   font-size: 9px;
 }
@@ -757,24 +749,8 @@ select {
   color: var(--muted);
   margin-top: 2px;
 }
-.map-route-button {
-  position: absolute;
-  right: 26px;
-  top: 26px;
-  z-index: 20;
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  background: #fffdf8f5;
-  border: 1px solid #dce1d6;
-  border-radius: 12px;
-  padding: 15px;
-  font-weight: 750;
-  font-size: 11px;
-}
-.map-route-button:disabled {
-  opacity: 0.65;
-}
+
+
 .map-hint {
   position: absolute;
   bottom: 112px;
@@ -942,9 +918,7 @@ select {
   .map-location-label {
     left: 380px;
   }
-  .map-route-button {
-    top: 106px;
-  }
+
   .app-navigation,
   .map-hint {
     left: calc(50% + 180px);
@@ -1046,13 +1020,7 @@ select {
     width: 26px;
     height: 26px;
   }
-  .map-route-button {
-    top: auto;
-    bottom: 160px;
-    right: 16px;
-    padding: 11px;
-    font-size: 10px;
-  }
+
   .map-hint {
     bottom: 112px;
     left: 50%;
@@ -1100,193 +1068,6 @@ select {
   }
   .brand small {
     letter-spacing: 0.9px;
-  }
-}
-.discovery-map,
-.illustrated-map,
-.campus-illustration {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-}
-.illustrated-map {
-  overflow: hidden;
-}
-.campus-illustration {
-  opacity: 0.96;
-}
-.illustrated-pin {
-  position: absolute;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  background: #fffdf8;
-  border: 1px solid #c1cdb4;
-  padding: 9px 11px;
-  border-radius: 13px;
-  box-shadow: 0 5px 12px #43573820;
-  transform: translate(-50%, -85%);
-  z-index: 6;
-  transition:
-    box-shadow 0.2s,
-    background 0.2s;
-  white-space: nowrap;
-}
-.illustrated-pin:after {
-  content: "";
-  position: absolute;
-  width: 9px;
-  height: 9px;
-  background: inherit;
-  border-bottom: 1px solid #c1cdb4;
-  border-right: 1px solid #c1cdb4;
-  bottom: -5px;
-  left: calc(50% - 5px);
-  transform: rotate(45deg);
-}
-.illustrated-pin:hover {
-  background: #fff3d8;
-  box-shadow: 0 8px 18px #43573830;
-  z-index: 9;
-}
-.illustrated-pin.is-selected {
-  background: #ffebc3;
-  border: 2px solid #b83e2d;
-  z-index: 10;
-}
-.illustrated-pin.is-planned {
-  box-shadow: 0 0 0 2px #b83e2d;
-}
-.pin-food {
-  font-size: 23px;
-}
-.pin-info strong {
-  display: block;
-  font-size: 11px;
-  font-weight: 800;
-}
-.pin-info small {
-  display: block;
-  color: var(--muted);
-  font-size: 9px;
-  margin-top: 2px;
-}
-.pin-count {
-  display: grid;
-  place-items: center;
-  width: 19px;
-  height: 19px;
-  font-size: 10px;
-  font-weight: 800;
-  border-radius: 50%;
-  background: #e9eedf;
-  color: var(--sage);
-}
-.map-scotty {
-  position: absolute;
-  left: 56%;
-  top: 62%;
-  z-index: 3;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  transform: translate(-50%, -50%);
-}
-.map-scotty > div {
-  width: 62px;
-  height: 62px;
-}
-.map-scotty span {
-  font-size: 9px;
-  color: #708461;
-  background: #e9eddfa6;
-  border-radius: 6px;
-  padding: 3px 5px;
-}
-.map-mode-toggle {
-  position: absolute;
-  bottom: 33px;
-  right: 25px;
-  z-index: 10;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 10px 13px;
-  background: #fffdf8;
-  border: 1px solid #dce1d6;
-  border-radius: 10px;
-  font-size: 10px;
-  font-weight: 700;
-}
-.map-compass {
-  position: absolute;
-  right: 31px;
-  top: 110px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 3px;
-  color: #869679;
-}
-.map-compass span {
-  font-size: 9px;
-  font-weight: 800;
-}
-.map-schematic-note {
-  position: absolute;
-  bottom: 10px;
-  right: 25px;
-  color: #859079;
-  font-size: 8px;
-  letter-spacing: 0.2px;
-}
-@media (max-width: 768px) {
-  .illustrated-map {
-    top: 175px;
-    height: calc(100% - 280px);
-  }
-  .illustrated-pin {
-    gap: 5px;
-    padding: 7px 8px;
-    border-radius: 10px;
-  }
-  .pin-food {
-    font-size: 19px;
-  }
-  .pin-info strong {
-    font-size: 10px;
-  }
-  .pin-info small {
-    font-size: 8px;
-  }
-  .pin-count {
-    height: 16px;
-    width: 16px;
-    font-size: 8px;
-  }
-  .map-scotty > div {
-    width: 45px;
-    height: 45px;
-  }
-  .map-scotty span {
-    display: none;
-  }
-  .map-mode-toggle {
-    bottom: 216px;
-    right: 16px;
-    padding: 9px 10px;
-    font-size: 9px;
-  }
-  .map-compass {
-    top: 70px;
-    right: 20px;
-  }
-  .map-schematic-note {
-    bottom: -8px;
-    left: 16px;
-    right: auto;
-    font-size: 7px;
   }
 }
 /* Readable controls at regular and enlarged text sizes. */
@@ -1343,12 +1124,6 @@ select {
   .filters-expanded .pixel-chip {
     font-size: 11px;
   }
-  .illustrated-pin .pin-info strong {
-    font-size: 11px;
-  }
-  .illustrated-pin .pin-info small {
-    font-size: 9px;
-  }
 }
 
 /* Keep summaries and overlay content legible in every theme surface. */
@@ -1379,15 +1154,8 @@ select {
   .discovery-panel {
     background: #fffdf8;
   }
-  .illustrated-map {
-    top: 212px;
-    height: calc(100% - 357px);
-  }
   .app-overlay-content {
     margin: 10px 8px 0;
     width: calc(100% - 16px);
-  }
-  .map-schematic-note {
-    bottom: -6px;
   }
 }

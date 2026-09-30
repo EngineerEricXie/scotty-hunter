@@ -37,7 +37,7 @@ Replaceable adapters:
 | `EventExtractor`    | `HeuristicEventExtractor`                              | `LLMEventExtractor`                  |
 | `CalendarService`   | `MockCalendarService` + ICS                            | `GoogleCalendarService`              |
 | `FoodVisionService` | `MockFoodVisionService`                                | `GrokFoodVisionService` (`GROK_API`) |
-| Map                 | Pixel campus map (default) + MapLibre/Carto GEO toggle | optional MapTiler/Mapbox token       |
+| Map                 | MapLibre street map with OpenFreeMap / OSM fallback | optional MapTiler/Mapbox token       |
 
 ## Data sources
 
@@ -83,7 +83,7 @@ npm run build
 
 ## 3-minute demo flow
 
-1. Open ScottyBites — CMU map with food markers.
+1. Open ScottyBites — CMU street map and sample event list.
 2. Switch **Today / Tomorrow / date** and meal pills.
 3. Tap **Saturday Lunch** or **AI Seminar**.
 4. Show **Confirmed food**, confidence, and the evidence quote.
@@ -92,8 +92,8 @@ npm run build
 7. Open **Plan** — lunch + dinner, 12–15 min walk, start at Gates.
 8. **Plan my free food day** — non-overlapping itinerary.
 9. Download **Add day to calendar (.ics)**.
-10. Tap **Saturday Lunch** on the map → **UPLOAD PHOTO TO UNLOCK** — the listing only said “Lunch will be provided,” but the table photo reveals vegetarian pizza, salad, and fruit.
-11. Optional stretch: 3D building extrusion, or another mock photo on **Me**.
+10. Tap **Saturday Lunch** in the event list → **UPLOAD PHOTO TO UNLOCK** — the listing only said “Lunch will be provided,” but the table photo reveals vegetarian pizza, salad, and fruit.
+11. Optional stretch: another mock photo on **Me**.
 12. Close with: structured data came from messy fixture/source text, not a hand-typed spreadsheet.
 
 Walking estimate: Haversine between building coordinates at **80 m/min** (~4.8 km/h). Savings figures are a labeled $12/meal illustration, not factual accounting.
@@ -114,7 +114,7 @@ These are intentionally unfinished because they need a human:
 - Indoor floor geometry is not modeled.
 - Google Calendar is ICS-only until OAuth exists.
 - Photo labels are mocked.
-- Building footprints are schematic rectangles for extrusion, not official GIS.
+- Event/building coordinates are unverified demo data, not navigation guidance. Event pins, location-based recentering, meal-route overlays, illustrated campus maps, and synthetic building footprints are removed. Use the event list and planner for the sample events.
 
 ## GitHub Pages demo
 
@@ -133,7 +133,7 @@ This public build is an explicitly labeled, no-key demo:
 - Browser-local preferences, points, and progress; no account or database
 - Photo results are prewritten samples. Photos stay in the browser and are not uploaded
   or analyzed. Event listings, availability, and dietary details are not live or verified
-- The default illustrated map works without external map services; the optional street map uses public OpenFreeMap tiles
+- The street map uses public OpenFreeMap tiles with an OpenStreetMap fallback and requires network access. Event lists and planning remain available without external map services. Event pins and route overlays are hidden because their locations are unverified.
 
 The build uses an isolated temporary copy that omits server API routes and does not
 copy `.env` files. It leaves the original source untouched. `npm run dev` and
