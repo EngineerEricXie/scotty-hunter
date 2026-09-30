@@ -197,7 +197,7 @@ export function PlannerExperience({
           </div>
           <p className="mt-2 text-sm font-bold leading-6 text-muted">
             Set your tastes and walking limit. Turn sample campus events into a day that
-            fits, then see your stops on the map.
+            fits. Event coordinates are unverified; map pins and routes are hidden.
           </p>
           <div className="mt-3 flex gap-2">
             <button
@@ -260,7 +260,7 @@ export function PlannerExperience({
               onClick={() => onClose?.()}
               className="pixel-btn min-h-11 w-full bg-ink text-sm text-gold"
             >
-              SEE ITINERARY ON MAP
+              BACK TO DISCOVERY
             </button>
             <button
               type="button"
@@ -300,7 +300,7 @@ export function PlannerExperience({
               onClick={() => onClose?.()}
               className="pixel-btn min-h-11 w-full bg-ink text-sm text-gold"
             >
-              SEE ITINERARY ON MAP
+              BACK TO DISCOVERY
             </button>
           </div>
         )}

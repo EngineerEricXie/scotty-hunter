@@ -10,7 +10,6 @@ import { DEMO_CLOCK_EVENT, demoToday } from "@/lib/demo-clock";
 import { eventVisible, type MapFilters } from "@/lib/filters";
 import { FilterBar } from "@/components/map/FilterBar";
 import { EventBottomSheet } from "@/components/map/EventBottomSheet";
-import { ClusterSheet } from "@/components/map/ClusterSheet";
 import { BottomNav } from "@/components/ui/BottomNav";
 import { MapPanelOverlay } from "@/components/ui/MapPanelOverlay";
 import { ErrorState, LoadingState } from "@/components/ui/States";
@@ -21,7 +20,6 @@ import {
   MapPin,
   List,
   Map as MapIcon,
-  Route,
   X,
 } from "lucide-react";
 import { EventCard } from "@/components/events/EventCard";
@@ -29,11 +27,9 @@ import { ScottySprite } from "@/components/pet/ScottySprite";
 import {
   APP_RESET_EVENT,
   loadLastPlanEventIds,
-  loadPreferences,
   seedDemoAvailability,
   upsertTodo,
 } from "@/lib/storage/local-state";
-import { buildMealRoute } from "@/lib/maps/meal-route";
 import { prefetchCampusEvents } from "@/lib/events-client";
 import { APP_CONFIG } from "@/lib/config";
 import { applyCorpusBoost } from "@/lib/community/boost";
@@ -112,8 +108,6 @@ export function MapExperience() {
   const [plannedIds, setPlannedIds] = useState<string[]>(() =>
     typeof window === "undefined" ? [] : loadLastPlanEventIds(),
   );
-  const [clusterEvents, setClusterEvents] = useState<Event[] | null>(null);
-  const [showRoute, setShowRoute] = useState(false);
   const [filters, setFilters] = useState<MapFilters>({
     date: demoToday(),
     meals: ["breakfast", "lunch", "dinner", "snacks"],
@@ -143,7 +137,6 @@ export function MapExperience() {
     setPlanDate(null);
     const ids = loadLastPlanEventIds();
     setPlannedIds(ids);
-    setShowRoute(ids.length >= 2);
     syncPanelUrl(null);
   }
 
@@ -155,7 +148,6 @@ export function MapExperience() {
     setPanel(next);
     setPlanDate(next === "plan" ? (extra?.date ?? null) : null);
     setSelectedId(null);
-    setClusterEvents(null);
     syncPanelUrl(next, extra);
   }
 
@@ -198,9 +190,7 @@ export function MapExperience() {
   useEffect(() => {
     const onReset = () => {
       setPlannedIds([]);
-      setShowRoute(false);
       setSelectedId(null);
-      setClusterEvents(null);
       setFilters((prev) => ({ ...prev, date: demoToday() }));
     };
     const onClock = () => {
@@ -224,11 +214,9 @@ export function MapExperience() {
       setPanel(next);
       setPlanDate(query.get("date"));
       setSelectedId(null);
-      setClusterEvents(null);
       if (!next) {
         const ids = loadLastPlanEventIds();
         setPlannedIds(ids);
-        setShowRoute(ids.length >= 2);
       }
     };
     window.addEventListener("popstate", onPopState);
@@ -300,28 +288,6 @@ export function MapExperience() {
     (event) => calendarDateInZone(new Date(event.start_time)) === filters.date,
   ).length;
   const plannedCount = visible.filter((event) => plannedIds.includes(event.id)).length;
-  const routeStops = useMemo(() => {
-    const prefs = loadPreferences();
-    return buildMealRoute({
-      events: visible,
-      plannedIds,
-      date: filters.date,
-      startBuildingId: prefs.home_building_id,
-    });
-  }, [visible, plannedIds, filters.date]);
-  const canShowRoute = routeStops.length >= 2;
-  const goingEventIds = useMemo(() => pings.map((ping) => ping.eventId), [pings]);
-
-  function openEvents(group: Event[]) {
-    if (group.length === 1 && group[0]) {
-      setClusterEvents(null);
-      setSelectedId(group[0].id);
-      return;
-    }
-    setSelectedId(null);
-    setClusterEvents(group);
-  }
-
   return (
     <div
       className={`app-shell ${panel ? "has-panel" : ""} fixed inset-x-0 w-full overflow-hidden bg-canvas`}
@@ -332,16 +298,7 @@ export function MapExperience() {
         inert={!!panel}
       >
         <div className="campus-map-frame">
-          <CampusMap
-            events={visible}
-            selectedId={selectedId}
-            plannedIds={plannedIds}
-            showRoute={showRoute && canShowRoute}
-            routeStops={routeStops}
-            goingEventIds={goingEventIds}
-            onOpen={openEvents}
-            onScottyClick={() => openPanel("scotty")}
-          />
+          <CampusMap onScottyClick={() => openPanel("scotty")} />
         </div>
 
         <aside
@@ -482,7 +439,6 @@ export function MapExperience() {
                     selected={event.id === selectedId}
                     onSelect={(event) => {
                       setSelectedId(event.id);
-                      setClusterEvents(null);
                       setListOpen(false);
                     }}
                   />
@@ -514,35 +470,13 @@ export function MapExperience() {
             <small>Pittsburgh, Pennsylvania</small>
           </span>
         </div>
-        <button
-          className="map-route-button"
-          disabled={!canShowRoute}
-          aria-pressed={showRoute && canShowRoute}
-          onClick={() => setShowRoute(!showRoute)}
-          title={
-            canShowRoute ? "Toggle your meal route" : "Build a plan to see your route"
-          }
-        >
-          <Route size={18} />
-          {showRoute && canShowRoute ? "Hide route" : "Meal route"}
-        </button>
-        {!selected && !clusterEvents && (
+        {!selected && (
           <div className="map-hint">
             <span className="map-hint-dot" />
-            Locations are unverified{APP_CONFIG.demoMode ? " · Demo events" : ""}
+            Event pins hidden · Locations unverified
             {plannedCount > 0 ? ` · ${plannedCount} planned` : ""}
           </div>
         )}
-
-        <ClusterSheet
-          events={clusterEvents ?? []}
-          plannedIds={plannedIds}
-          onSelect={(event) => {
-            setClusterEvents(null);
-            setSelectedId(event.id);
-          }}
-          onClose={() => setClusterEvents(null)}
-        />
 
         <EventBottomSheet
           event={selected}

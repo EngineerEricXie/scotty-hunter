@@ -75,7 +75,7 @@ const types = {
     throw new Error("Removed schematic map must not be selectable");
   }
   await page
-    .getByText("Locations are unverified · Demo events", { exact: true })
+    .getByText("Event pins hidden · Locations unverified", { exact: true })
     .waitFor();
   await page
     .getByText(
@@ -99,7 +99,7 @@ const types = {
   await page.getByRole("button", { name: "Close event details", exact: true }).click();
   await page.getByRole("button", { name: "My plan", exact: true }).click();
   await page.getByRole("button", { name: "RUN DEMO PLAN", exact: true }).click();
-  await page.getByRole("button", { name: "SEE ITINERARY ON MAP", exact: true }).waitFor();
+  await page.getByRole("button", { name: "BACK TO DISCOVERY", exact: true }).waitFor();
   await page.screenshot({ path: root + "/qa/desktop-plan.png" });
   const downloadPromise = page.waitForEvent("download");
   await page
@@ -107,7 +107,7 @@ const types = {
     .click();
   const download = await downloadPromise;
   await download.saveAs(root + "/qa/itinerary.ics");
-  await page.getByRole("button", { name: "SEE ITINERARY ON MAP", exact: true }).click();
+  await page.getByRole("button", { name: "BACK TO DISCOVERY", exact: true }).click();
   if (!page.url().includes("/scotty-hunter/")) throw new Error("Lost base path");
   await page.getByRole("button", { name: "Scotty", exact: true }).click();
   await page.getByRole("dialog").waitFor();
@@ -159,18 +159,28 @@ const types = {
   livePage.on("pageerror", (error) => errors.push(error.message));
   await livePage.goto(url);
   const liveTiles = await livePage
-    .locator(".food-marker")
-    .first()
+    .locator('[data-map-ready="true"]')
     .waitFor({ timeout: 30000 })
     .then(
       () => true,
       () => false,
     );
   if (liveTiles) {
+    if (
+      await livePage
+        .locator(".food-marker, .route-start-marker, .map-route-button")
+        .count()
+    ) {
+      throw new Error(
+        "Unverified event pins and routes must not be rendered on the street map",
+      );
+    }
     await livePage.screenshot({ path: root + "/qa/desktop-street-map.png" });
     await livePage.setViewportSize({ width: 390, height: 844 });
     await livePage.screenshot({ path: root + "/qa/mobile-street-map.png" });
-    console.log("LIVE MAP PASS: external street tiles loaded before event markers");
+    console.log(
+      "LIVE MAP PASS: external street tiles loaded; unverified event pins and routes absent",
+    );
   } else {
     console.log(
       "LIVE MAP NOT VERIFIED: external tiles unavailable; offline fallback and local interactions passed",

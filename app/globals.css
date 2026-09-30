@@ -749,24 +749,8 @@ select {
   color: var(--muted);
   margin-top: 2px;
 }
-.map-route-button {
-  position: absolute;
-  right: 26px;
-  top: 26px;
-  z-index: 20;
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  background: #fffdf8f5;
-  border: 1px solid #dce1d6;
-  border-radius: 12px;
-  padding: 15px;
-  font-weight: 750;
-  font-size: 11px;
-}
-.map-route-button:disabled {
-  opacity: 0.65;
-}
+
+
 .map-hint {
   position: absolute;
   bottom: 112px;
@@ -934,9 +918,7 @@ select {
   .map-location-label {
     left: 380px;
   }
-  .map-route-button {
-    top: 106px;
-  }
+
   .app-navigation,
   .map-hint {
     left: calc(50% + 180px);
@@ -1038,13 +1020,7 @@ select {
     width: 26px;
     height: 26px;
   }
-  .map-route-button {
-    top: auto;
-    bottom: 160px;
-    right: 16px;
-    padding: 11px;
-    font-size: 10px;
-  }
+
   .map-hint {
     bottom: 112px;
     left: 50%;
