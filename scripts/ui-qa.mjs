@@ -167,7 +167,16 @@ async function control(page, locator, label, minimum = 44) {
       const hit = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2);
       return hit === el || el.contains(hit);
     }),
-    `${label} is not covered by another control`,
+    `${label} is not covered by another control: ${JSON.stringify(
+      await locator.evaluate((el) => {
+        const r = el.getBoundingClientRect();
+        const hit = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2);
+        return {
+          rect: { x: r.x, y: r.y, width: r.width, height: r.height },
+          hit: hit?.outerHTML.slice(0, 240),
+        };
+      }),
+    )}`,
   ).toBe(true);
 }
 
@@ -280,11 +289,15 @@ async function discoveryJourney(page, name) {
   await confirmed.click();
   await expect(confirmed).toHaveAttribute("aria-pressed", "true");
   await expect(page.locator(".food-card-status:not(.is-confirmed)")).toHaveCount(0);
+  const confirmedCount = await page.locator(".food-card").count();
   for (const meal of ["BREAKFAST", "LUNCH", "DINNER", "SNACKS"]) {
     const chip = page.getByRole("button", { name: meal, exact: true });
     await chip.click();
     await expect(chip).toHaveAttribute("aria-pressed", "false");
   }
+  // Empty meal selection means no meal restriction, matching eventVisible.
+  await expect(page.locator(".food-card")).toHaveCount(confirmedCount);
+  await search.fill("zzzz-no-food");
   await page.getByRole("heading", { name: "No bites just yet" }).waitFor();
   await page.getByRole("button", { name: "Reset filters", exact: true }).click();
   await expect(page.locator(".food-card")).toHaveCount(originalCount);
@@ -340,6 +353,63 @@ async function verifyIcs(page, button, name) {
   const ids = [...text.matchAll(/^UID:(.+)$/gm)].map((match) => match[1]);
   expect(new Set(ids).size, "Calendar has no duplicate events").toBe(ids.length);
   return ids;
+}
+
+async function routeRendering(page) {
+  const diagnostic = await page.evaluate(() => {
+    const el = document.querySelector('[data-map-ready="true"]');
+    let fiber = el?.[Object.keys(el).find((key) => key.startsWith("__reactFiber"))];
+    let map;
+    for (let n = 0; fiber && n < 15 && !map; n++, fiber = fiber.return) {
+      for (let hook = fiber.memoizedState, i = 0; hook && i < 20; i++, hook = hook.next) {
+        const value = hook.memoizedState?.current ?? hook.memoizedState;
+        if (
+          value &&
+          typeof value.getStyle === "function" &&
+          typeof value.queryRenderedFeatures === "function"
+        ) {
+          map = value;
+          break;
+        }
+      }
+    }
+    if (!map) return { mapFound: false };
+    const style = map.getStyle();
+    return {
+      mapFound: true,
+      styleLoaded: map.isStyleLoaded(),
+      sourceLoaded: map.getSource("cmu-meal-route")
+        ? map.isSourceLoaded("cmu-meal-route")
+        : false,
+      source: style.sources["cmu-meal-route"],
+      layers: style.layers.filter((layer) => layer.id.startsWith("cmu-meal-route")),
+      rendered: map.queryRenderedFeatures({ layers: ["cmu-meal-route-line"] }).length,
+    };
+  });
+  console.log("ROUTE RENDER DIAGNOSTIC", JSON.stringify(diagnostic));
+  await page.waitForFunction(
+    () => {
+      const canvas = document.querySelector(".maplibregl-canvas");
+      if (!canvas) return false;
+      const copy = document.createElement("canvas");
+      copy.width = canvas.width;
+      copy.height = canvas.height;
+      const context = copy.getContext("2d", { willReadFrequently: true });
+      context.drawImage(canvas, 0, 0);
+      const rgba = context.getImageData(0, 0, copy.width, copy.height).data;
+      let count = 0;
+      for (let i = 0; i < rgba.length; i += 4)
+        if (
+          Math.abs(rgba[i] - 18) < 4 &&
+          Math.abs(rgba[i + 1] - 108) < 4 &&
+          Math.abs(rgba[i + 2] - 134) < 4
+        )
+          count++;
+      return count > 20;
+    },
+    undefined,
+    { timeout: 10000 },
+  );
 }
 
 async function routeOnMap(page) {
@@ -842,6 +912,7 @@ async function realProviderSmoke(browser, url) {
       );
     }
   } catch (error) {
+    await shot(page, "live-provider-FAIL").catch(() => {});
     results.push({ name: "live-provider", status: "failed", error: String(error) });
   } finally {
     await context.close();
