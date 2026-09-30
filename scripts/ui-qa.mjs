@@ -418,6 +418,7 @@ async function routeOnMap(page) {
   expect(Number(await summary.getAttribute("data-route-stop-count"))).toBeGreaterThan(0);
   expect(Number(await summary.getAttribute("data-route-point-count"))).toBeGreaterThan(1);
   const toggle = page.getByRole("switch", { name: "Meal route", exact: true });
+  await routeRendering(page);
   const map = page.getByRole("application", { name: "Carnegie Mellon campus map" });
   await expect(toggle).toBeChecked();
   await expect(map).toHaveAttribute("data-route-visible", "true");
@@ -960,10 +961,12 @@ try {
       await context.close();
     }
   }
-  for (const viewport of viewports) await viewportSuite(browser, url, viewport);
-  await interruptedPlanSuite(browser, url);
-  await fallbackSuite(browser, url, false);
-  await fallbackSuite(browser, url, true);
+  if (process.env.SCOTTY_QA_ONLY_ROUTE !== "1") {
+    for (const viewport of viewports) await viewportSuite(browser, url, viewport);
+    await interruptedPlanSuite(browser, url);
+    await fallbackSuite(browser, url, false);
+    await fallbackSuite(browser, url, true);
+  }
   await realProviderSmoke(browser, url);
   if (results.some((result) => result.status === "failed")) process.exitCode = 1;
   else
