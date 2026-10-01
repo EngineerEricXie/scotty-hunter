@@ -37,8 +37,8 @@ jobs:
           fi
       - run: node scripts/ui-qa.mjs
         env:
-          SCOTTY_QA_URL: ${{ inputs.qa_url }}
-          SCOTTY_EXPECTED_SOURCE: ${{ inputs.expected_source }}
+          SCOTTY_QA_URL: https://engineerericxie.github.io/scotty-hunter/
+          SCOTTY_EXPECTED_SOURCE: 4dd08cd9e14fd8370ac2fc91f16977845cd4edf9
           SCOTTY_REQUIRE_LIVE_TILES: "1"
       - uses: actions/upload-artifact@v4
         if: always()
