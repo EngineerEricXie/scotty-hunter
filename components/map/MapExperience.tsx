@@ -10,6 +10,8 @@ import { DEMO_CLOCK_EVENT, demoToday } from "@/lib/demo-clock";
 import { eventVisible, type MapFilters } from "@/lib/filters";
 import { FilterBar } from "@/components/map/FilterBar";
 import { getBuildingMapLocation } from "@/lib/maps/buildings";
+import { buildMealRoutePreview } from "@/lib/maps/meal-route";
+import { MealRouteDetails } from "@/components/map/MealRouteDetails";
 import { ClusterSheet } from "@/components/map/ClusterSheet";
 import {
   defaultPinVisibility,
@@ -26,6 +28,7 @@ import {
   SlidersHorizontal,
   ArrowRight,
   MapPin,
+  Route,
   List,
   Map as MapIcon,
   X,
@@ -35,6 +38,7 @@ import { ScottySprite } from "@/components/pet/ScottySprite";
 import {
   APP_RESET_EVENT,
   loadLastPlanEventIds,
+  loadPreferences,
   seedDemoAvailability,
   upsertTodo,
 } from "@/lib/storage/local-state";
@@ -131,8 +135,14 @@ export function MapExperience() {
   const [plannedIds, setPlannedIds] = useState<string[]>(() =>
     typeof window === "undefined" ? [] : loadLastPlanEventIds(),
   );
+  const [routeStartBuildingId, setRouteStartBuildingId] = useState(
+    () => loadPreferences().home_building_id,
+  );
+  const [showRoute, setShowRoute] = useState(() => loadLastPlanEventIds().length > 0);
   const [filters, setFilters] = useState<MapFilters>({
-    date: demoToday(),
+    date: /^\d{4}-\d{2}-\d{2}$/.test(params.get("routeDate") ?? "")
+      ? params.get("routeDate")!
+      : demoToday(),
     meals: ["breakfast", "lunch", "dinner", "snacks"],
     explicitOnly: false,
     includeLikely: true,
@@ -160,7 +170,16 @@ export function MapExperience() {
     setPlanDate(null);
     const ids = loadLastPlanEventIds();
     setPlannedIds(ids);
+    setRouteStartBuildingId(loadPreferences().home_building_id);
+    setShowRoute(ids.length > 0);
     syncPanelUrl(null);
+  }
+
+  function showPlannedRoute(date: string) {
+    closePanel();
+    setFilters((prev) => ({ ...prev, date }));
+    setListOpen(false);
+    setShowRoute(true);
   }
 
   function openPanel(next: AppPanel, extra?: Record<string, string>) {
@@ -214,6 +233,8 @@ export function MapExperience() {
   useEffect(() => {
     const onReset = () => {
       setPlannedIds([]);
+      setShowRoute(false);
+      setRouteStartBuildingId(loadPreferences().home_building_id);
       setSelectedId(null);
       setClusterEvents(null);
       savePinVisibility(true);
@@ -244,6 +265,8 @@ export function MapExperience() {
       if (!next) {
         const ids = loadLastPlanEventIds();
         setPlannedIds(ids);
+        setRouteStartBuildingId(loadPreferences().home_building_id);
+        setShowRoute(ids.length > 0);
       }
     };
     window.addEventListener("popstate", onPopState);
@@ -318,6 +341,38 @@ export function MapExperience() {
     (event) => !getBuildingMapLocation(event.building_id),
   ).length;
   const plannedCount = visible.filter((event) => plannedIds.includes(event.id)).length;
+  const routePreview = useMemo(
+    () =>
+      buildMealRoutePreview({
+        events,
+        plannedIds,
+        date: filters.date,
+        startBuildingId: routeStartBuildingId,
+      }),
+    [events, plannedIds, filters.date, routeStartBuildingId],
+  );
+  const routeMealCount = routePreview.stops.filter((stop) => stop.kind === "meal").length;
+  const routePointCount = routePreview.lines.features.reduce(
+    (sum, feature) => sum + feature.geometry.coordinates.length,
+    0,
+  );
+  useEffect(() => {
+    window.dispatchEvent(new Event(VIEWPORT_SYNC_EVENT));
+  }, [routePreview.status, routeMealCount]);
+  useEffect(() => {
+    const query = new URLSearchParams(window.location.search);
+    const previous = query.toString();
+    if (plannedIds.length > 0) query.set("routeDate", filters.date);
+    else query.delete("routeDate");
+    const next = query.toString();
+    if (previous !== next) {
+      window.history.replaceState(
+        window.history.state,
+        "",
+        assetPath(next ? `/?${next}` : "/"),
+      );
+    }
+  }, [plannedIds, filters.date]);
   return (
     <div
       className={`app-shell ${panel ? "has-panel" : ""} fixed inset-x-0 w-full overflow-hidden bg-canvas`}
@@ -333,6 +388,8 @@ export function MapExperience() {
             selectedId={selectedId}
             plannedIds={plannedIds}
             pinsVisible={pinsVisible}
+            routePreview={routePreview}
+            showRoute={showRoute}
             onOpen={openEvents}
             onScottyClick={() => openPanel("scotty")}
           />
@@ -466,6 +523,7 @@ export function MapExperience() {
                 </button>
               </div>
             )}
+            <MealRouteDetails preview={routePreview} date={filters.date} />
             <div className="event-list">
               {[...visible]
                 .sort((a, b) => a.start_time.localeCompare(b.start_time))
@@ -502,15 +560,51 @@ export function MapExperience() {
             </button>
           </div>
         </aside>
-        <div className="map-location-label">
-          <span className="location-icon">
-            <MapPin size={18} />
-          </span>
-          <span>
-            <strong>Carnegie Mellon</strong>
-            <small>Pittsburgh, Pennsylvania</small>
-          </span>
-        </div>
+        {routePreview.status !== "empty" ? (
+          <section
+            className="map-route-preview"
+            aria-label="Meal route preview"
+            data-route-stop-count={routeMealCount}
+            data-route-point-count={routePointCount}
+            data-route-status={routePreview.status}
+          >
+            <button
+              type="button"
+              className="map-route-toggle"
+              role="switch"
+              aria-label="Meal route"
+              aria-checked={showRoute && routePointCount > 1}
+              disabled={routePointCount < 2}
+              onClick={() => setShowRoute((shown) => !shown)}
+              title="Approximate mapped paths. Open List view for the itinerary and any unmapped legs."
+            >
+              <Route size={20} aria-hidden="true" />
+              <span>
+                <strong>
+                  {routePointCount < 2
+                    ? routePreview.status === "complete"
+                      ? "No walk needed"
+                      : "Path unavailable"
+                    : `Route ${showRoute ? "on" : "off"}`}
+                </strong>
+                <small>
+                  {routeMealCount} stops ·{" "}
+                  {routePreview.status === "complete" ? "Approximate" : "Partial path"}
+                </small>
+              </span>
+            </button>
+          </section>
+        ) : (
+          <div className="map-location-label">
+            <span className="location-icon">
+              <MapPin size={18} />
+            </span>
+            <span>
+              <strong>Carnegie Mellon</strong>
+              <small>Pittsburgh, Pennsylvania</small>
+            </span>
+          </div>
+        )}
         <button
           type="button"
           className="map-pins-toggle"
@@ -528,9 +622,13 @@ export function MapExperience() {
         {!selected && !clusterEvents && (
           <div className="map-hint">
             <span className="map-hint-dot" />
-            {pinsVisible
-              ? "Demo events · Building-level pins"
-              : "Event pins off · Use the list"}
+            {showRoute && routePreview.status !== "empty"
+              ? routePreview.status === "complete"
+                ? "Demo route · Approximate mapped paths"
+                : "Partial demo route · Gaps listed in List view"
+              : pinsVisible
+                ? "Demo events · Building-level pins"
+                : "Event pins off · Use the list"}
             {plannedCount > 0 ? ` · ${plannedCount} planned` : ""}
           </div>
         )}
@@ -579,6 +677,7 @@ export function MapExperience() {
         <PlannerExperience
           variant="overlay"
           onClose={closePanel}
+          onViewRoute={showPlannedRoute}
           dateOverride={planDate}
         />
       </MapPanelOverlay>

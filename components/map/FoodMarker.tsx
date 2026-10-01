@@ -23,7 +23,7 @@ export function createFoodMarkerElement(
   button.dataset.cluster = count > 1 ? "true" : "false";
   button.setAttribute(
     "aria-label",
-    `${APP_CONFIG.demoMode ? "Demo: " : ""}${
+    `${APP_CONFIG.demoMode ? "Demo: " : ""}${options?.stopNumber ? `Meal stop ${options.stopNumber}. ` : ""}${
       count > 1
         ? `${count} food drops including ${event.title}${planned ? ", on your plan" : ""}`
         : `${event.title}, ${event.food_status.toLowerCase()} food, ${hour}${planned ? ", on your plan" : ""}`

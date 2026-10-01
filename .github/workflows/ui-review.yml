@@ -3,6 +3,15 @@ on:
   push:
     branches: ["design/**"]
   workflow_dispatch:
+    inputs:
+      qa_url:
+        description: "Optional published app URL; blank tests the local build"
+        required: false
+        type: string
+      expected_source:
+        description: "Expected deployment.json source_commit for public verification"
+        required: false
+        type: string
 permissions:
   contents: read
 jobs:
@@ -18,11 +27,25 @@ jobs:
       - run: npm ci
       - run: npm run lint && npm run typecheck && npm test
       - run: npm run build:pages
-      - run: npx playwright install --with-deps chromium
+      - name: Select Chromium for browser checks
+        run: |
+          CHROME=$(command -v google-chrome || command -v chromium || true)
+          if [ -n "$CHROME" ]; then
+            echo "PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=$CHROME" >> "$GITHUB_ENV"
+          else
+            npx playwright install --with-deps chromium
+          fi
       - run: node scripts/ui-qa.mjs
+        env:
+          SCOTTY_QA_URL: ${{ inputs.qa_url }}
+          SCOTTY_EXPECTED_SOURCE: ${{ inputs.expected_source }}
+          SCOTTY_REQUIRE_LIVE_TILES: "1"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: scotty-ui-review
-          path: qa
+          path: |
+            qa/*.png
+            qa/*.json
+            qa/*.ics
           retention-days: 7

@@ -77,9 +77,9 @@ function mountWanderer(reduced = false) {
     frames,
     onClick,
     attributes,
-    setReduced(matches: boolean) {
+    setReduced(matches: boolean, dispatch = true) {
       media.matches = matches;
-      media.dispatchEvent(new Event("change"));
+      if (dispatch) media.dispatchEvent(new Event("change"));
     },
     setHidden(hidden: boolean) {
       document.hidden = hidden;
@@ -108,6 +108,19 @@ afterEach(() => {
 });
 
 describe("Scotty companion motion lifecycle", () => {
+  it("clears the walking state on the next frame even if a media event is delayed", () => {
+    const view = mountWanderer();
+    view.frame();
+    expect(view.button.dataset.walking).toBe("true");
+    view.setReduced(true, false);
+    view.frame();
+    expect(view.button.dataset.walking).toBe("false");
+    expect(view.frames.size).toBe(0);
+    view.setReduced(false);
+    view.frame();
+    expect(view.button.dataset.walking).toBe("true");
+    view.cleanup();
+  });
   it("starts still with reduced motion, then follows preference changes without duplicate loops", () => {
     const view = mountWanderer(true);
     expect(view.frames.size).toBe(0);

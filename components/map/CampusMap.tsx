@@ -1,12 +1,26 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Map as MapLibreMap, Marker, NavigationControl, LngLatBounds } from "maplibre-gl";
+import {
+  Map as MapLibreMap,
+  Marker,
+  NavigationControl,
+  LngLatBounds,
+  setWorkerUrl,
+} from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { APP_CONFIG, CMU_MAP_CENTER } from "@/lib/config";
+import { assetPath } from "@/lib/runtime";
 import { ScottyWanderer } from "@/components/map/ScottyWanderer";
-import { BUILDINGS, getBuildingMapLocation } from "@/lib/maps/buildings";
+import { MealRouteLayer } from "@/components/map/MealRouteLayer";
+import { mealStopByEventId, type MealRoutePreview } from "@/lib/maps/meal-route";
 import { addFootwayLayer } from "@/lib/maps/road-graph";
+import {
+  campusFrameCoordinates,
+  mapFramePadding,
+  shouldFrameCampus,
+  type CampusFrameState,
+} from "@/lib/maps/map-framing";
 import { VIEWPORT_SYNC_EVENT } from "@/lib/ui/viewport-sync";
 
 import type { Event } from "@/lib/types";
@@ -37,6 +51,8 @@ export function CampusMap({
   selectedId,
   plannedIds,
   pinsVisible,
+  routePreview,
+  showRoute,
   onOpen,
   onScottyClick,
 }: {
@@ -44,6 +60,8 @@ export function CampusMap({
   selectedId: string | null;
   plannedIds: string[];
   pinsVisible: boolean;
+  routePreview: MealRoutePreview;
+  showRoute: boolean;
   onOpen: (events: Event[]) => void;
   onScottyClick?: () => void;
 }) {
@@ -58,6 +76,7 @@ export function CampusMap({
 
     let map: MapLibreMap;
     try {
+      setWorkerUrl(assetPath("/vendor/maplibre/maplibre-gl-worker.mjs"));
       map = new MapLibreMap({
         container: containerRef.current,
         style: APP_CONFIG.mapStyleUrl,
@@ -81,24 +100,67 @@ export function CampusMap({
 
     let receivedTile = false;
     let usingFallback = false;
-    let framed = false;
-    const prepareMap = () => {
+    const frameState: CampusFrameState = { signature: null, userAdjusted: false };
+    let applyingFrame = false;
+    const shell = containerRef.current.closest(".app-shell");
+    const overlaySelectors = [
+      ".discovery-heading",
+      ".map-location-label",
+      ".map-route-preview",
+      ".map-pins-toggle",
+      ".map-hint",
+      ".app-navigation",
+    ];
+    const resizeAndFrame = () => {
       map.resize();
-      if (!framed) {
-        framed = true;
-        map.fitBounds(campusLngLatBounds(), {
-          padding:
-            window.innerWidth <= 768
-              ? { top: 260, bottom: 225, left: 58, right: 58 }
-              : { top: 136, bottom: 148, left: 48, right: 72 },
-          pitch: 0,
+      const container = containerRef.current;
+      if (!container) return;
+      const rect = container.getBoundingClientRect();
+      if (rect.width <= 0 || rect.height <= 0) return;
+      const overlays = { top: 0, bottom: 0 };
+      for (const selector of overlaySelectors) {
+        const element = shell?.querySelector<HTMLElement>(selector);
+        if (!element || !element.getClientRects().length) continue;
+        const obstacle = element.getBoundingClientRect();
+        if (obstacle.right <= rect.left || obstacle.left >= rect.right) continue;
+        if (
+          selector === ".discovery-heading" ||
+          obstacle.top < rect.top + rect.height / 3
+        ) {
+          overlays.top = Math.max(overlays.top, obstacle.bottom - rect.top);
+        } else {
+          overlays.bottom = Math.max(overlays.bottom, rect.bottom - obstacle.top);
+        }
+      }
+      const padding = mapFramePadding(rect.width, rect.height, overlays);
+      const signature = JSON.stringify([rect.width, rect.height, padding]);
+      if (!shouldFrameCampus(frameState, signature)) return;
+      try {
+        const camera = map.cameraForBounds(campusLngLatBounds(), {
+          padding,
           bearing: 0,
-          duration: 0,
           maxZoom: 16.9,
         });
-        map.setPitch(0);
-        map.setBearing(0);
+        if (!camera || !Number.isFinite(camera.zoom)) return;
+        applyingFrame = true;
+        map.jumpTo({ ...camera, pitch: 0 });
+        // A hidden/undersized canvas or unsuccessful camera must remain retryable.
+        frameState.signature = signature;
+      } catch {
+        // ResizeObserver and viewport notifications retry once layout is usable.
+      } finally {
+        applyingFrame = false;
       }
+    };
+    const onCameraInteraction = () => {
+      if (!applyingFrame) frameState.userAdjusted = true;
+    };
+    map.on("dragstart", onCameraInteraction);
+    map.on("zoomstart", onCameraInteraction);
+    map.on("rotatestart", onCameraInteraction);
+    map.on("pitchstart", onCameraInteraction);
+    const prepareMap = () => {
+      resizeAndFrame();
       // Only show campus path styling and Scotty after street tiles have loaded.
       if (!receivedTile) return;
       try {
@@ -131,10 +193,14 @@ export function CampusMap({
     }, 6000);
     map.on("error", useFallback);
 
-    const ro = new ResizeObserver(() => map.resize());
+    const ro = new ResizeObserver(resizeAndFrame);
     ro.observe(containerRef.current);
+    for (const selector of overlaySelectors) {
+      const element = shell?.querySelector(selector);
+      if (element) ro.observe(element);
+    }
 
-    const syncViewport = () => map.resize();
+    const syncViewport = resizeAndFrame;
     const visualViewport = window.visualViewport;
     visualViewport?.addEventListener("resize", syncViewport);
     visualViewport?.addEventListener("scroll", syncViewport);
@@ -142,7 +208,7 @@ export function CampusMap({
     window.addEventListener("orientationchange", syncViewport);
     window.addEventListener(VIEWPORT_SYNC_EVENT, syncViewport);
     const onVisibility = () => {
-      if (document.visibilityState === "visible") map.resize();
+      if (document.visibilityState === "visible") resizeAndFrame();
     };
     document.addEventListener("visibilitychange", onVisibility);
 
@@ -153,6 +219,10 @@ export function CampusMap({
       map.off("data", onTile);
       map.off("load", prepareMap);
       map.off("style.load", prepareMap);
+      map.off("dragstart", onCameraInteraction);
+      map.off("zoomstart", onCameraInteraction);
+      map.off("rotatestart", onCameraInteraction);
+      map.off("pitchstart", onCameraInteraction);
       ro.disconnect();
       visualViewport?.removeEventListener("resize", syncViewport);
       visualViewport?.removeEventListener("scroll", syncViewport);
@@ -174,6 +244,7 @@ export function CampusMap({
     };
     const render = () => {
       clear();
+      const stopNumbers = mealStopByEventId(routePreview.stops);
       const clusters = clusterEvents(events, (longitude, latitude) => {
         const point = readyMap.project([longitude, latitude]);
         return { x: point.x, y: point.y };
@@ -182,9 +253,12 @@ export function CampusMap({
         const representative = pickClusterRepresentative(cluster, plannedIds, selectedId);
         const selected = cluster.events.some((event) => event.id === selectedId);
         const planned = cluster.events.some((event) => plannedIds.includes(event.id));
+        const numberedEvent = cluster.events.find((event) => stopNumbers.has(event.id));
         const element = createFoodMarkerElement(representative, selected, planned, {
           count: cluster.events.length,
           hourLabel: clusterHourLabel(cluster),
+          stopNumber:
+            showRoute && numberedEvent ? stopNumbers.get(numberedEvent.id) : undefined,
         });
         element.dataset.buildings = [
           ...new Set(cluster.events.map((event) => event.building_id)),
@@ -205,7 +279,16 @@ export function CampusMap({
       readyMap.off("moveend", render);
       clear();
     };
-  }, [readyMap, events, selectedId, plannedIds, pinsVisible, onOpen]);
+  }, [
+    readyMap,
+    events,
+    selectedId,
+    plannedIds,
+    pinsVisible,
+    onOpen,
+    routePreview,
+    showRoute,
+  ]);
 
   return (
     <div
@@ -213,6 +296,9 @@ export function CampusMap({
       role="application"
       aria-label="Carnegie Mellon campus map"
       data-map-ready={mapReady}
+      data-route-visible={Boolean(
+        mapReady && showRoute && routePreview.lines.features.length,
+      )}
     >
       <div ref={containerRef} className="absolute inset-0 h-full w-full" />
       {!mapReady && (
@@ -228,6 +314,9 @@ export function CampusMap({
         </div>
       )}
       {readyMap ? (
+        <MealRouteLayer map={readyMap} preview={routePreview} visible={showRoute} />
+      ) : null}
+      {readyMap ? (
         <ScottyWanderer
           map={readyMap}
           lureBuildingIds={NO_LURES}
@@ -240,9 +329,6 @@ export function CampusMap({
 
 function campusLngLatBounds(): LngLatBounds {
   const bounds = new LngLatBounds();
-  for (const building of BUILDINGS) {
-    const location = getBuildingMapLocation(building.id);
-    if (location) bounds.extend([location.longitude, location.latitude]);
-  }
+  for (const coordinate of campusFrameCoordinates()) bounds.extend(coordinate);
   return bounds;
 }

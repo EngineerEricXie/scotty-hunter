@@ -68,7 +68,10 @@ export function ScottyWanderer({
     let disposed = false;
     const frame = (now: number) => {
       raf = null;
-      if (disposed || motionPreference.matches || document.hidden) return;
+      if (disposed || motionPreference.matches || document.hidden) {
+        el.dataset.walking = "false";
+        return;
+      }
       const snap = machine.tick(now, now - last);
       last = now;
       marker.setLngLat([snap.point.longitude, snap.point.latitude]);
